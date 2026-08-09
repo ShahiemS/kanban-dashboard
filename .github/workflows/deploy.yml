@@ -18,7 +18,14 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            cd /opt/kanban || mkdir -p /opt/kanban && cd /opt/kanban
-            git pull origin main || git clone ${{ github.server_url }}/${{ github.repository }}.git /opt/kanban
+            if [ -d /opt/kanban/.git ]; then
+              cd /opt/kanban
+              git fetch origin main
+              git reset --hard origin/main
+            else
+              rm -rf /opt/kanban
+              git clone ${{ github.server_url }}/${{ github.repository }}.git /opt/kanban
+              cd /opt/kanban
+            fi
             docker compose down
             docker compose up --build -d
