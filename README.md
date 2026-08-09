@@ -26,6 +26,14 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173).
 
+## Demo password
+
+This dashboard is gated behind a single shared password (not a real user
+auth system — just enough to keep it from being wide open while it's public).
+Set it via the `DEMO_PASSWORD` env var in `backend/.env` (defaults to
+`demo1234` if unset). The page also sets `noindex, nofollow` so it won't be
+picked up by search engines.
+
 ## Run with Docker
 
 ```bash

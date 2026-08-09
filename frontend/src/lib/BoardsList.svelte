@@ -4,7 +4,7 @@
 
   export let api;
 
-  const COVER_COLORS = ['#0079bf', '#d29034', '#519839', '#b04632', '#89609e', '#cd5a91', '#00aecc', '#4bbf6b'];
+  const COVER_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
   const coverColor = (id) => COVER_COLORS[id % COVER_COLORS.length];
 
   let boards = [];
@@ -166,7 +166,7 @@
   <div class="boards-grid">
     {#each boards as board (board.id)}
       <div class="board-card">
-        <div class="board-card-cover" style="background: {coverColor(board.id)}">
+        <div class="board-card-cover" style="--cover-color: {coverColor(board.id)}">
           {#if !showArchived}
             <button
               class="board-card-star"

@@ -1,0 +1,12 @@
+/* Tailwind is used incrementally alongside the existing hand-written CSS in
+   app.css, so we intentionally skip the "preflight" base reset (which would
+   strip default styling from buttons/inputs used elsewhere in the app) and
+   only pull in the theme variables + utility classes.
+
+   app.css is imported into the `base` layer so that Tailwind utilities used in
+   components always win over the hand-written global element styles. */
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "./app.css" layer(base);
+@import "tailwindcss/utilities.css" layer(utilities);

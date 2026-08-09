@@ -23,6 +23,7 @@ services:
       DB_USER: ${DB_USER:-kanban}
       DB_PASSWORD: ${DB_PASSWORD:-kanban}
       DB_NAME: ${DB_NAME:-kanban}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-demo1234}
     ports:
       - "3000:3000"
     depends_on:

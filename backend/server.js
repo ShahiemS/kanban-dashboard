@@ -10,6 +10,23 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD || 'demo1234';
+
+// Auth - this is a lightweight shared-password gate for demo purposes only,
+// not a real authentication system.
+app.post('/api/auth/login', (req, res) => {
+  const { password } = req.body || {};
+  if (password === DEMO_PASSWORD) return res.json({ ok: true });
+  res.status(401).json({ ok: false, error: 'Invalid password' });
+});
+
+app.use('/api', (req, res, next) => {
+  if (req.path === '/auth/login') return next();
+  if (req.get('x-demo-password') !== DEMO_PASSWORD) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  next();
+});
 
 // Boards
 app.get('/api/boards', async (req, res) => {

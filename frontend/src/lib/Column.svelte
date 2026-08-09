@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import Card from './Card.svelte';
+  import Modal from './Modal.svelte';
 
   export let column;
   export let cards;
@@ -10,14 +11,9 @@
 
   let newTitle = '';
   let newDesc = '';
-  let newTag = '';
-  let newTagColor = '';
-  let newCoverImage = '';
-  let newProgress = '';
-  let newAttachments = '';
-  let newComments = '';
-  let newMembers = '';
+  let addAnother = false;
   let showAdd = false;
+  let justAdded = false;
   let dragOver = false;
   let editingTitle = false;
   let editTitle = column.title;
@@ -34,17 +30,6 @@
   async function addCard() {
     if (!newTitle.trim()) return;
 
-    const meta = {};
-    if (newTag.trim()) meta.tag = newTag.trim();
-    if (newTagColor.trim()) meta.tag_color = newTagColor.trim();
-    if (newCoverImage.trim()) meta.cover_image = newCoverImage.trim();
-    if (newProgress.trim()) meta.progress = parseInt(newProgress, 10);
-    if (newAttachments.trim()) meta.attachments_count = parseInt(newAttachments, 10);
-    if (newComments.trim()) meta.comments_count = parseInt(newComments, 10);
-    if (newMembers.trim()) {
-      meta.members = newMembers.split(',').map(s => s.trim()).filter(Boolean);
-    }
-
     const res = await fetch(`${api}/api/cards`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -53,21 +38,26 @@
         description: newDesc,
         column_id: column.id,
         position: cards.length,
-        meta
+        meta: {}
       })
     });
     const card = await res.json();
     dispatch('cardMoved', card);
     newTitle = '';
     newDesc = '';
-    newTag = '';
-    newTagColor = '';
-    newCoverImage = '';
-    newProgress = '';
-    newAttachments = '';
-    newComments = '';
-    newMembers = '';
+
+    if (addAnother) {
+      justAdded = true;
+      setTimeout(() => { justAdded = false; }, 1500);
+    } else {
+      showAdd = false;
+    }
+  }
+
+  function closeAddCard() {
     showAdd = false;
+    newTitle = '';
+    newDesc = '';
   }
 
   function onDragOver(e) {
@@ -188,31 +178,36 @@
     {/each}
   </div>
 
-  {#if showAdd}
-    <div class="add-card">
-      <input bind:value={newTitle} placeholder="Card title" />
-      <textarea bind:value={newDesc} placeholder="Description" rows="2" />
-      <div class="add-card-meta">
-        <input bind:value={newTag} placeholder="Tag" />
-        <input bind:value={newTagColor} placeholder="Tag color (hex)" />
-        <input bind:value={newCoverImage} placeholder="Cover image URL" />
-        <input bind:value={newProgress} placeholder="Progress %" type="number" min="0" max="100" />
-        <input bind:value={newAttachments} placeholder="Attachments" type="number" min="0" />
-        <input bind:value={newComments} placeholder="Comments" type="number" min="0" />
-        <input bind:value={newMembers} placeholder="Member image URLs (comma separated)" />
-      </div>
+  <button class="add-card-trigger" on:click={() => showAdd = true}>
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+    Add card
+  </button>
+</div>
+
+{#if showAdd}
+  <Modal title="Add card to {column.title}" on:close={closeAddCard}>
+    <div class="add-card-form">
+      <label class="add-card-label" for="add-card-title">Title</label>
+      <input id="add-card-title" bind:value={newTitle} placeholder="e.g. Design the login page" on:keydown={(e) => e.key === 'Enter' && addCard()} />
+
+      <label class="add-card-label" for="add-card-desc">Description</label>
+      <textarea id="add-card-desc" bind:value={newDesc} placeholder="Optional description" rows="3" />
+
+      <label class="add-card-checkbox">
+        <input type="checkbox" bind:checked={addAnother} />
+        Add another card after this one
+      </label>
+
       <div class="add-card-actions">
         <button on:click={addCard}>Add card</button>
-        <button class="secondary" on:click={() => showAdd = false}>Cancel</button>
+        <button class="secondary" on:click={closeAddCard}>Done</button>
+        {#if justAdded}
+          <span class="add-card-confirm">Card added — add another below</span>
+        {/if}
       </div>
     </div>
-  {:else}
-    <button class="add-card-trigger" on:click={() => showAdd = true}>
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="12" y1="5" x2="12" y2="19" />
-        <line x1="5" y1="12" x2="19" y2="12" />
-      </svg>
-      Add card
-    </button>
-  {/if}
-</div>
+  </Modal>
+{/if}
