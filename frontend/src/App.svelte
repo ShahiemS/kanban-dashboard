@@ -3,7 +3,7 @@
   import Column from './lib/Column.svelte';
   import './app.css';
 
-  const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  const API = import.meta.env.VITE_API_URL || '';
   let columns = [];
   let cards = [];
   let newColumnTitle = '';

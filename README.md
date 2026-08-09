@@ -33,7 +33,7 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-The app will be available on port `80` (frontend) and the API on port `3000`.
+The app will be available on port `8080` (frontend) and the API on port `3000`.
 
 ## VPS auto-deploy
 
