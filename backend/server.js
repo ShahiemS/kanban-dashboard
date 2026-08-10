@@ -87,15 +87,32 @@ app.get('/api/boards/:id', async (req, res) => {
 });
 
 app.post('/api/boards', async (req, res) => {
-  const { title, workspace_id } = req.body;
+  const { title, workspace_id, columns = [] } = req.body;
   if (!workspace_id) {
     return res.status(400).json({ error: 'workspace_id is required' });
   }
-  const { rows } = await pool.query(
-    'INSERT INTO boards (title, workspace_id) VALUES ($1, $2) RETURNING *',
-    [title, workspace_id]
-  );
-  res.status(201).json(rows[0]);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      'INSERT INTO boards (title, workspace_id) VALUES ($1, $2) RETURNING *',
+      [title, workspace_id]
+    );
+    const board = rows[0];
+    for (let i = 0; i < columns.length; i++) {
+      await client.query(
+        'INSERT INTO columns (title, position, board_id) VALUES ($1, $2, $3)',
+        [columns[i], i, board.id]
+      );
+    }
+    await client.query('COMMIT');
+    res.status(201).json(board);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 });
 
 app.patch('/api/boards/:id', async (req, res) => {

@@ -104,11 +104,22 @@
   function toggleMenu(workspaceId) {
     openMenuId = openMenuId === workspaceId ? null : workspaceId;
   }
+
+  function closeMenu() {
+    openMenuId = null;
+  }
 </script>
 
+<svelte:window
+  on:click={closeMenu}
+  on:keydown={(e) => {
+    if (e.key === 'Escape') closeMenu();
+  }}
+/>
+
 <div class="flex flex-col w-60 h-full bg-[#f8f8f8] border-r border-[#e6e6e6]">
-  <div class="p-4 border-b border-[#e6e6e6]">
-    <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Workspaces</h2>
+  <div class="p-4 pb-6">
+    <h2 class="text-base font-semibold text-gray-900">Workspaces</h2>
   </div>
 
   <div class="flex-1 overflow-y-auto p-2 space-y-0.5">
@@ -142,6 +153,7 @@
                 {activeWorkspaceId === workspace.id
                   ? 'bg-white text-gray-900 font-semibold shadow-sm'
                   : 'text-gray-600 hover:bg-white hover:text-gray-900'}"
+              on:contextmenu|preventDefault={() => openMenuId = workspace.id}
             >
               <span class="truncate">{workspace.title}</span>
             </a>

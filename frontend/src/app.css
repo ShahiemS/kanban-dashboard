@@ -119,7 +119,7 @@ button.logout:hover {
 /* ---------- Header ---------- */
 
 .app-header {
-  @apply flex flex-wrap items-center justify-between gap-4;
+  @apply flex flex-wrap items-center justify-between gap-4 mb-6;
 }
 
 .app-header h1 {

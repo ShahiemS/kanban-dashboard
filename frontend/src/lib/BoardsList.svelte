@@ -1,6 +1,6 @@
 <script>
   import { tick } from 'svelte';
-  import { push } from 'svelte-spa-router';
+  import { link, push } from 'svelte-spa-router';
   import { Star, DotsThree } from 'phosphor-svelte';
   import WorkspaceSidebar from './WorkspaceSidebar.svelte';
   import Loading from './Loading.svelte';
@@ -22,10 +22,17 @@
   let showArchived = false;
   let addingBoard = false;
   let newBoardInput = null;
+  let selectedTemplate = 'blank';
+  const templates = {
+    blank: [],
+    kanban: ['To do', 'In progress', 'Done'],
+    sport: ['Warm-up', 'Skill drills', 'Tactical', 'Conditioning', 'Cool-down']
+  };
   let workspace = null;
   let editingWorkspace = false;
   let editWorkspaceTitle = '';
   let workspaceTitleInput = null;
+  let contextMenu = null;
 
   $: if (workspaceId) loadBoards();
 
@@ -65,11 +72,12 @@
       const res = await fetch(`${api}/api/boards`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newBoardTitle, workspace_id: workspaceId })
+        body: JSON.stringify({ title: newBoardTitle, workspace_id: workspaceId, columns: templates[selectedTemplate] })
       });
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const board = await res.json();
       newBoardTitle = '';
+      selectedTemplate = 'blank';
       addingBoard = false;
       openBoard(board.id);
     } catch (err) {
@@ -89,6 +97,7 @@
   function cancelAddBoard() {
     addingBoard = false;
     newBoardTitle = '';
+    selectedTemplate = 'blank';
   }
 
   async function patchBoard(board, patch) {
@@ -161,6 +170,15 @@
     openMenuId = openMenuId === boardId ? null : boardId;
   }
 
+  function openBoardContextMenu(e, board) {
+    e.preventDefault();
+    contextMenu = { board, x: e.clientX, y: e.clientY };
+  }
+
+  function closeContextMenu() {
+    contextMenu = null;
+  }
+
   function startEditWorkspace() {
     if (!workspace) return;
     editingWorkspace = true;
@@ -192,6 +210,13 @@
   }
 </script>
 
+<svelte:window
+  on:click={closeContextMenu}
+  on:keydown={(e) => {
+    if (e.key === 'Escape') closeContextMenu();
+  }}
+/>
+
 <div class="flex h-screen">
   <WorkspaceSidebar api={api} activeWorkspaceId={workspaceId ? parseInt(workspaceId, 10) : null} />
 
@@ -212,18 +237,20 @@
           <button class="secondary" on:click={cancelEditWorkspace}>Cancel</button>
         </div>
       {:else}
-        <h1>
-          {#if workspace}
+        {#if workspace}
+          <nav class="breadcrumb">
+            <a use:link href="/" class="breadcrumb-link">Workspaces</a>
+            <span class="breadcrumb-sep">/</span>
             <button
-              class="!bg-transparent !border-transparent p-0 m-0 text-inherit font-inherit cursor-pointer"
+              class="bg-transparent border-none p-0 text-inherit font-semibold text-[1.25rem] cursor-pointer hover:opacity-80 hover:bg-transparent"
               on:click={startEditWorkspace}
             >
-              {showArchived ? 'Archived Boards' : workspace.title}
+              {showArchived ? 'Archived' : workspace.title}
             </button>
-          {:else}
-            Select a workspace
-          {/if}
-        </h1>
+          </nav>
+        {:else}
+          <h1>Select a workspace</h1>
+        {/if}
       {/if}
 
       <div class="board-controls">
@@ -256,6 +283,8 @@
           {#each boards as board (board.id)}
             <div
               class="group relative flex flex-col min-h-[140px] p-3 bg-white bg-[radial-gradient(circle,#e5e5e5_1px,transparent_1px)] bg-[length:12px_12px] rounded-[10px] border border-[#e6e6e6] cursor-pointer transition hover:border-[#d4d4d4] hover:bg-[#fafafa]"
+              role="listitem"
+              on:contextmenu|preventDefault={(e) => openBoardContextMenu(e, board)}
             >
               {#if editingBoardId !== board.id}
                 <div class="absolute top-2 right-2 flex items-center gap-1">
@@ -329,6 +358,14 @@
                       if (e.key === 'Escape') cancelAddBoard();
                     }}
                   />
+                  <select
+                    class="w-full px-2 py-1.5 border border-[#e6e6e6] rounded-lg bg-white text-sm text-gray-900 outline-none focus:border-gray-900"
+                    bind:value={selectedTemplate}
+                  >
+                    <option value="blank">Blank board</option>
+                    <option value="kanban">Kanban (To do, In progress, Done)</option>
+                    <option value="sport">Sport Schema (Warm-up, Skill drills, Tactical, Conditioning, Cool-down)</option>
+                  </select>
                   <div class="flex gap-2">
                     <button class="flex-1" on:click={addBoard}>Add Board</button>
                     <button class="flex-1 secondary" on:click={cancelAddBoard}>Cancel</button>
@@ -347,3 +384,16 @@
     </div>
   </div>
 </div>
+
+{#if contextMenu}
+  <div
+    class="fixed z-50 min-w-[150px] rounded-[10px] border border-[#e6e6e6] bg-white p-1 shadow-[0_6px_16px_rgba(0,0,0,0.06)]"
+    style="left: {contextMenu.x}px; top: {contextMenu.y}px;"
+  >
+    {#if !contextMenu.board.archived}
+      <button class="block w-full rounded-md border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-gray-900 hover:bg-gray-100" on:click={() => { startRename(contextMenu.board); closeContextMenu(); }}>Rename</button>
+    {/if}
+    <button class="block w-full rounded-md border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-gray-900 hover:bg-gray-100" on:click={() => { toggleArchived(contextMenu.board); closeContextMenu(); }}>{contextMenu.board.archived ? 'Unarchive' : 'Archive'}</button>
+    <button class="block w-full rounded-md border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-red-600 hover:bg-red-50" on:click={() => { deleteBoard(contextMenu.board); closeContextMenu(); }}>Delete</button>
+  </div>
+{/if}
