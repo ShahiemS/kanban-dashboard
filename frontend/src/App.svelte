@@ -13,8 +13,8 @@
   let authenticated = isAuthenticated();
 
   const routes = {
-    '/': wrap({ component: BoardsList, props: { api: API } }),
-    '/board/:id': wrap({ component: BoardView, props: { api: API } })
+    '/': wrap({ component: BoardsList, props: { api: API, onLogout: logout } }),
+    '/board/:id': wrap({ component: BoardView, props: { api: API, onLogout: logout } })
   };
 
   function handleLoginSuccess() {
@@ -28,7 +28,6 @@
 </script>
 
 {#if authenticated}
-  <button class="logout-btn" on:click={logout}>Log out</button>
   <Router {routes} />
 {:else}
   <Login api={API} onSuccess={handleLoginSuccess} />

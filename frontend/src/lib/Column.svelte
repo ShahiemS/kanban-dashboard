@@ -150,7 +150,7 @@
       </div>
     {:else}
       <h2 class="column-title">
-        <span class="column-title-text">{column.title}</span>
+        <button class="column-title-text bg-transparent border-none p-0 text-inherit cursor-pointer hover:bg-transparent hover:opacity-80" on:click={startEditing}>{column.title}</button>
         <span class="column-count">{cards.length}</span>
       </h2>
       <div class="column-menu-wrapper">

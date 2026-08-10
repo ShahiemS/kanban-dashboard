@@ -1,11 +1,9 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { push } from 'svelte-spa-router';
 
   export let api;
-
-  const COVER_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
-  const coverColor = (id) => COVER_COLORS[id % COVER_COLORS.length];
+  export let onLogout;
 
   let boards = [];
   let newBoardTitle = '';
@@ -15,6 +13,8 @@
   let editTitle = '';
   let openMenuId = null;
   let showArchived = false;
+  let addingBoard = false;
+  let newBoardInput = null;
 
   onMount(loadBoards);
 
@@ -54,6 +54,7 @@
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const board = await res.json();
       newBoardTitle = '';
+      addingBoard = false;
       openBoard(board.id);
     } catch (err) {
       error = 'Could not create board. Is the server running?';
@@ -62,6 +63,16 @@
 
   function openBoard(id) {
     push(`/board/${id}`);
+  }
+
+  function openAddBoard() {
+    addingBoard = true;
+    tick().then(() => newBoardInput?.focus());
+  }
+
+  function cancelAddBoard() {
+    addingBoard = false;
+    newBoardTitle = '';
   }
 
   async function patchBoard(board, patch) {
@@ -139,15 +150,10 @@
   <h1>{showArchived ? 'Archived Boards' : 'Boards'}</h1>
 
   <div class="board-controls">
-    {#if !showArchived}
-      <div class="control-group">
-        <input bind:value={newBoardTitle} placeholder="New board title" on:keydown={(e) => e.key === 'Enter' && addBoard()} />
-        <button on:click={addBoard}>Add Board</button>
-      </div>
-    {/if}
     <button class="archived-toggle" on:click={toggleArchivedView}>
       {showArchived ? '← Back to boards' : 'View archived boards'}
     </button>
+    <button class="logout" on:click={onLogout}>Log out</button>
   </div>
 </header>
 
@@ -158,72 +164,104 @@
   </div>
 {:else if loading}
   <p class="boards-empty">Loading boards…</p>
-{:else if boards.length === 0}
-  <p class="boards-empty">
-    {showArchived ? 'No archived boards.' : 'No boards yet. Create your first board above.'}
-  </p>
+{:else if showArchived && boards.length === 0}
+  <p class="boards-empty">No archived boards.</p>
 {:else}
   <div class="boards-grid">
     {#each boards as board (board.id)}
-      <div class="board-card">
-        <div class="board-card-cover" style="--cover-color: {coverColor(board.id)}">
-          {#if !showArchived}
-            <button
-              class="board-card-star"
-              class:starred={board.starred}
-              on:click={() => toggleStar(board)}
-              aria-label={board.starred ? 'Unstar board' : 'Star board'}
-            >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill={board.starred ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-              </svg>
-            </button>
-          {/if}
-          <div class="board-card-menu-wrapper">
-            <button class="board-card-menu-btn" on:click|stopPropagation={() => toggleMenu(board.id)} aria-label="Board options">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                <circle cx="5" cy="12" r="2" />
-                <circle cx="12" cy="12" r="2" />
-                <circle cx="19" cy="12" r="2" />
-              </svg>
-            </button>
-            {#if openMenuId === board.id}
-              <div class="card-menu-dropdown board-card-menu-dropdown">
-                {#if !showArchived}
-                  <button on:click={() => startRename(board)}>Rename</button>
-                {/if}
-                <button on:click={() => toggleArchived(board)}>{board.archived ? 'Unarchive' : 'Archive'}</button>
-                <button class="danger" on:click={() => deleteBoard(board)}>Delete</button>
-              </div>
+      <div
+        class="group relative flex flex-col min-h-[140px] p-3 bg-white bg-[radial-gradient(circle,#e5e5e5_1px,transparent_1px)] bg-[length:12px_12px] rounded-[10px] border border-[#e6e6e6] cursor-pointer transition hover:border-[#d4d4d4] hover:bg-[#fafafa]"
+      >
+        {#if editingBoardId !== board.id}
+          <div class="absolute top-2 right-2 flex items-center gap-1">
+            {#if !showArchived}
+              <button
+                class="w-6 h-6 p-0 rounded-md border-transparent bg-transparent text-gray-400 opacity-0 transition hover:bg-gray-100 hover:text-gray-900 group-hover:opacity-100 focus-visible:opacity-100"
+                class:opacity-100={board.starred}
+                class:text-yellow-500={board.starred}
+                on:click|stopPropagation={() => toggleStar(board)}
+                aria-label={board.starred ? 'Unstar board' : 'Star board'}
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" fill={board.starred ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+              </button>
             {/if}
+            <div class="relative">
+              <button
+                class="w-6 h-6 p-0 rounded-md border-transparent bg-transparent text-gray-400 opacity-0 transition hover:bg-gray-100 hover:text-gray-900 group-hover:opacity-100 focus-visible:opacity-100"
+                class:opacity-100={openMenuId === board.id}
+                on:click|stopPropagation={() => toggleMenu(board.id)}
+                aria-label="Board options"
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                  <circle cx="5" cy="12" r="2" />
+                  <circle cx="12" cy="12" r="2" />
+                  <circle cx="19" cy="12" r="2" />
+                </svg>
+              </button>
+              {#if openMenuId === board.id}
+                <div class="absolute right-0 top-7 z-30 min-w-[150px] rounded-[10px] border border-[#e6e6e6] bg-white p-1 shadow-[0_6px_16px_rgba(0,0,0,0.06)]">
+                  {#if !showArchived}
+                    <button class="block w-full rounded-md border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-gray-900 hover:bg-gray-100" on:click={() => startRename(board)}>Rename</button>
+                  {/if}
+                  <button class="block w-full rounded-md border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-gray-900 hover:bg-gray-100" on:click={() => toggleArchived(board)}>{board.archived ? 'Unarchive' : 'Archive'}</button>
+                  <button class="block w-full rounded-md border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-red-600 hover:bg-red-50" on:click={() => deleteBoard(board)}>Delete</button>
+                </div>
+              {/if}
+            </div>
           </div>
-        </div>
+        {/if}
 
         {#if editingBoardId === board.id}
-          <div class="board-card-rename">
+          <div class="flex-1 flex flex-col justify-center p-0">
             <input
-              class="board-card-rename-input"
+              class="w-full mb-2 px-2 py-1.5 border border-gray-900 rounded-lg bg-white text-base font-medium text-gray-900 outline-none"
               bind:value={editTitle}
               on:keydown={(e) => {
                 if (e.key === 'Enter') renameBoard(board);
                 if (e.key === 'Escape') cancelRename();
               }}
             />
-            <div class="board-card-rename-actions">
-              <button on:click={() => renameBoard(board)}>Save</button>
-              <button class="secondary" on:click={cancelRename}>Cancel</button>
+            <div class="flex gap-2">
+              <button class="flex-1" on:click={() => renameBoard(board)}>Save</button>
+              <button class="flex-1 secondary" on:click={cancelRename}>Cancel</button>
             </div>
           </div>
         {:else}
-          <button class="board-card-body" on:click={() => openBoard(board.id)}>
-            <span class="board-card-title">{board.title}</span>
-            <svg class="board-card-arrow" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12" />
-              <polyline points="12 5 19 12 12 19" />
-            </svg>
+          <button class="flex-1 flex justify-center items-center min-w-0 px-10 bg-transparent border-none rounded-none text-gray-900 text-xl font-semibold leading-snug text-center" on:click={() => openBoard(board.id)}>
+            <span class="block w-full overflow-hidden text-ellipsis whitespace-nowrap">{board.title}</span>
           </button>
         {/if}
       </div>
     {/each}
+
+    {#if !showArchived}
+      <div class="group relative flex flex-col min-h-[140px] p-0 bg-white bg-[radial-gradient(circle,#e5e5e5_1px,transparent_1px)] bg-[length:12px_12px] rounded-[10px] border border-dashed border-[#e6e6e6] cursor-pointer transition hover:border-[#d4d4d4] hover:bg-[#fafafa] text-gray-500 hover:text-gray-900">
+        {#if addingBoard}
+          <div class="flex-1 flex flex-col justify-center gap-2 p-3">
+            <input
+              bind:this={newBoardInput}
+              class="w-full px-2 py-1.5 border border-[#e6e6e6] rounded-lg bg-white text-base font-medium text-gray-900 outline-none focus:border-gray-900"
+              bind:value={newBoardTitle}
+              placeholder="New board title"
+              on:keydown={(e) => {
+                if (e.key === 'Enter') addBoard();
+                if (e.key === 'Escape') cancelAddBoard();
+              }}
+            />
+            <div class="flex gap-2">
+              <button class="flex-1" on:click={addBoard}>Add Board</button>
+              <button class="flex-1 secondary" on:click={cancelAddBoard}>Cancel</button>
+            </div>
+          </div>
+        {:else}
+          <button class="flex-1 flex flex-col items-center justify-center gap-1 w-full p-3 bg-transparent border-none rounded-none text-inherit text-sm font-medium" on:click={openAddBoard}>
+            <span class="text-[1.75rem] font-light leading-none" aria-hidden="true">+</span>
+            <span class="text-sm">Add board</span>
+          </button>
+        {/if}
+      </div>
+    {/if}
   </div>
 {/if}
