@@ -159,11 +159,12 @@
   draggable="true"
   on:dragstart={onDragStart}
   on:click={openDetail}
+  on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && openDetail()}
   on:contextmenu|preventDefault={showContextMenu}
   role="button"
   tabindex="0"
 >
-  <div class="absolute top-2 right-2" on:click|stopPropagation>
+  <div class="absolute top-2 right-2">
     <button
       class="flex items-center justify-center w-6 h-6 rounded-md border border-transparent bg-transparent p-0 text-gray-400 opacity-0 group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-900 transition"
       on:click|stopPropagation={toggleMenu}
