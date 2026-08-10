@@ -1,0 +1,193 @@
+<script>
+  import { onMount, tick } from 'svelte';
+  import { link } from 'svelte-spa-router';
+  import { DotsThree } from 'phosphor-svelte';
+  import { workspaces } from './workspaceStore.js';
+
+  export let api;
+  export let activeWorkspaceId = null;
+
+  let loading = true;
+  let error = '';
+  let openMenuId = null;
+  let editingWorkspaceId = null;
+  let editTitle = '';
+  let addingWorkspace = false;
+  let newWorkspaceTitle = '';
+  let newWorkspaceInput = null;
+
+  onMount(loadWorkspaces);
+
+  async function loadWorkspaces() {
+    loading = true;
+    error = '';
+    try {
+      const res = await fetch(`${api}/api/workspaces`);
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      workspaces.set(await res.json());
+    } catch (err) {
+      console.error('[WorkspaceSidebar] failed to load workspaces', err);
+      error = 'Could not load workspaces';
+    } finally {
+      loading = false;
+    }
+  }
+
+  function openAddWorkspace() {
+    addingWorkspace = true;
+    tick().then(() => newWorkspaceInput?.focus());
+  }
+
+  function cancelAddWorkspace() {
+    addingWorkspace = false;
+    newWorkspaceTitle = '';
+  }
+
+  async function addWorkspace() {
+    if (!newWorkspaceTitle.trim()) return;
+    try {
+      const res = await fetch(`${api}/api/workspaces`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newWorkspaceTitle })
+      });
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      const workspace = await res.json();
+      workspaces.update(list => [...list, workspace]);
+      newWorkspaceTitle = '';
+      addingWorkspace = false;
+    } catch (err) {
+      error = 'Could not create workspace';
+    }
+  }
+
+  function startRename(workspace) {
+    openMenuId = null;
+    editingWorkspaceId = workspace.id;
+    editTitle = workspace.title;
+  }
+
+  function cancelRename() {
+    editingWorkspaceId = null;
+    editTitle = '';
+  }
+
+  async function renameWorkspace(workspace) {
+    if (!editTitle.trim()) return;
+    try {
+      const res = await fetch(`${api}/api/workspaces/${workspace.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: editTitle })
+      });
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      const updated = await res.json();
+      workspaces.update(list => list.map(w => w.id === updated.id ? updated : w));
+      editingWorkspaceId = null;
+    } catch (err) {
+      error = 'Could not rename workspace';
+    }
+  }
+
+  async function deleteWorkspace(workspace) {
+    openMenuId = null;
+    if (!confirm(`Delete "${workspace.title}" and all its boards?`)) return;
+    try {
+      const res = await fetch(`${api}/api/workspaces/${workspace.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      workspaces.update(list => list.filter(w => w.id !== workspace.id));
+    } catch (err) {
+      error = 'Could not delete workspace';
+    }
+  }
+
+  function toggleMenu(workspaceId) {
+    openMenuId = openMenuId === workspaceId ? null : workspaceId;
+  }
+</script>
+
+<div class="flex flex-col w-60 h-full bg-[#f8f8f8] border-r border-[#e6e6e6]">
+  <div class="p-4 border-b border-[#e6e6e6]">
+    <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Workspaces</h2>
+  </div>
+
+  <div class="flex-1 overflow-y-auto p-2 space-y-0.5">
+    {#if loading}
+      <p class="px-3 py-2 text-xs text-gray-500">Loading…</p>
+    {:else if error}
+      <p class="px-3 py-2 text-xs text-red-600">{error}</p>
+    {:else}
+      {#each $workspaces as workspace (workspace.id)}
+        <div class="relative group">
+          {#if editingWorkspaceId === workspace.id}
+            <div class="px-2 py-1.5">
+              <input
+                class="w-full px-2 py-1 text-sm border border-gray-900 rounded-md bg-white outline-none"
+                bind:value={editTitle}
+                on:keydown={(e) => {
+                  if (e.key === 'Enter') renameWorkspace(workspace);
+                  if (e.key === 'Escape') cancelRename();
+                }}
+              />
+              <div class="flex gap-1 mt-1.5">
+                <button class="flex-1 px-2 py-1 text-xs rounded-md bg-gray-900 text-white" on:click={() => renameWorkspace(workspace)}>Save</button>
+                <button class="flex-1 px-2 py-1 text-xs rounded-md border border-[#e6e6e6] bg-white text-gray-700" on:click={cancelRename}>Cancel</button>
+              </div>
+            </div>
+          {:else}
+            <a
+              use:link
+              href={`/workspace/${workspace.id}`}
+              class="flex items-center px-3 py-2 rounded-lg text-sm transition no-underline
+                {activeWorkspaceId === workspace.id
+                  ? 'bg-white text-gray-900 font-semibold shadow-sm'
+                  : 'text-gray-600 hover:bg-white hover:text-gray-900'}"
+            >
+              <span class="truncate">{workspace.title}</span>
+            </a>
+            <button
+              class="absolute right-1.5 top-1.5 flex items-center justify-center w-6 h-6 rounded-md transition hover:bg-gray-100 !bg-transparent !border-transparent text-gray-400 opacity-100 {activeWorkspaceId === workspace.id || openMenuId === workspace.id ? 'text-gray-900' : 'hover:text-gray-600'}"
+              on:click|stopPropagation={() => toggleMenu(workspace.id)}
+              aria-label="Workspace options"
+            >
+              <DotsThree size={14} weight="bold" />
+            </button>
+            {#if openMenuId === workspace.id}
+              <div class="absolute right-2 top-8 z-30 min-w-[120px] rounded-[10px] border border-[#e6e6e6] bg-white p-1 shadow-[0_6px_16px_rgba(0,0,0,0.06)]">
+                <button class="block w-full rounded-md border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-gray-900 hover:bg-gray-100" on:click={() => startRename(workspace)}>Rename</button>
+                <button class="block w-full rounded-md border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-red-600 hover:bg-red-50" on:click={() => deleteWorkspace(workspace)}>Delete</button>
+              </div>
+            {/if}
+          {/if}
+        </div>
+      {/each}
+    {/if}
+  </div>
+
+  <div class="p-3 border-t border-[#e6e6e6]">
+    {#if addingWorkspace}
+      <input
+        bind:this={newWorkspaceInput}
+        class="w-full px-2 py-1.5 text-sm border border-[#e6e6e6] rounded-lg bg-white outline-none focus:border-gray-900"
+        bind:value={newWorkspaceTitle}
+        placeholder="Workspace title"
+        on:keydown={(e) => {
+          if (e.key === 'Enter') addWorkspace();
+          if (e.key === 'Escape') cancelAddWorkspace();
+        }}
+      />
+      <div class="flex gap-2 mt-2">
+        <button class="flex-1 px-2 py-1 text-xs rounded-lg bg-gray-900 text-white font-medium" on:click={addWorkspace}>Add</button>
+        <button class="flex-1 px-2 py-1 text-xs rounded-lg border border-[#e6e6e6] bg-white text-gray-700" on:click={cancelAddWorkspace}>Cancel</button>
+      </div>
+    {:else}
+      <button
+        class="w-full flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-gray-500 rounded-lg border border-dashed border-[#d4d4d4] hover:border-gray-400 hover:text-gray-900 transition !bg-transparent"
+        on:click={openAddWorkspace}
+      >
+        <span class="text-base leading-none">+</span>
+        Add workspace
+      </button>
+    {/if}
+  </div>
+</div>

@@ -28,12 +28,54 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
+// Workspaces
+app.get('/api/workspaces', async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM workspaces ORDER BY id');
+  res.json(rows);
+});
+
+app.get('/api/workspaces/:id', async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM workspaces WHERE id = $1', [req.params.id]);
+  if (!rows[0]) return res.status(404).json({ error: 'Workspace not found' });
+  res.json(rows[0]);
+});
+
+app.post('/api/workspaces', async (req, res) => {
+  const { title } = req.body;
+  const { rows } = await pool.query(
+    'INSERT INTO workspaces (title) VALUES ($1) RETURNING *',
+    [title]
+  );
+  res.status(201).json(rows[0]);
+});
+
+app.patch('/api/workspaces/:id', async (req, res) => {
+  const { id } = req.params;
+  const { title } = req.body;
+  const { rows } = await pool.query(
+    'UPDATE workspaces SET title = $1 WHERE id = $2 RETURNING *',
+    [title, id]
+  );
+  if (!rows[0]) return res.status(404).json({ error: 'Workspace not found' });
+  res.json(rows[0]);
+});
+
+app.delete('/api/workspaces/:id', async (req, res) => {
+  const { id } = req.params;
+  await pool.query('DELETE FROM workspaces WHERE id = $1', [id]);
+  res.sendStatus(204);
+});
+
 // Boards
 app.get('/api/boards', async (req, res) => {
   const archived = req.query.archived === 'true';
+  const workspaceId = req.query.workspace_id;
+  if (!workspaceId) {
+    return res.status(400).json({ error: 'workspace_id is required' });
+  }
   const { rows } = await pool.query(
-    'SELECT * FROM boards WHERE archived = $1 ORDER BY starred DESC, id',
-    [archived]
+    'SELECT * FROM boards WHERE workspace_id = $1 AND archived = $2 ORDER BY starred DESC, id',
+    [workspaceId, archived]
   );
   res.json(rows);
 });
@@ -45,10 +87,13 @@ app.get('/api/boards/:id', async (req, res) => {
 });
 
 app.post('/api/boards', async (req, res) => {
-  const { title } = req.body;
+  const { title, workspace_id } = req.body;
+  if (!workspace_id) {
+    return res.status(400).json({ error: 'workspace_id is required' });
+  }
   const { rows } = await pool.query(
-    'INSERT INTO boards (title) VALUES ($1) RETURNING *',
-    [title]
+    'INSERT INTO boards (title, workspace_id) VALUES ($1, $2) RETURNING *',
+    [title, workspace_id]
   );
   res.status(201).json(rows[0]);
 });

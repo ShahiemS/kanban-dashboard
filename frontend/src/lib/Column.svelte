@@ -1,5 +1,6 @@
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { DotsThree, Plus } from 'phosphor-svelte';
   import Card from './Card.svelte';
   import Modal from './Modal.svelte';
 
@@ -155,11 +156,7 @@
       </h2>
       <div class="column-menu-wrapper">
         <button class="card-action column-menu-btn" on:click|stopPropagation={toggleMenu} aria-label="Column options">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-            <circle cx="5" cy="12" r="2" />
-            <circle cx="12" cy="12" r="2" />
-            <circle cx="19" cy="12" r="2" />
-          </svg>
+          <DotsThree size={16} weight="bold" />
         </button>
         {#if menuOpen}
           <div class="card-menu-dropdown column-menu-dropdown">
@@ -179,10 +176,7 @@
   </div>
 
   <button class="add-card-trigger" on:click={() => showAdd = true}>
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
+    <Plus size={14} />
     Add card
   </button>
 </div>

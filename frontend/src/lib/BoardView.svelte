@@ -2,6 +2,7 @@
   import { link } from 'svelte-spa-router';
   import { tick } from 'svelte';
   import Column from './Column.svelte';
+  import WorkspaceSidebar from './WorkspaceSidebar.svelte';
 
   export let params = {};
   export let api;
@@ -152,79 +153,87 @@
   }
 </script>
 
-<header class="app-header">
-  <nav class="breadcrumb">
-    <a href="/" use:link class="breadcrumb-link">Boards</a>
-    <span class="breadcrumb-sep">/</span>
-    {#if editingTitle}
-      <input
-        bind:this={titleInput}
-        class="min-w-[200px] bg-transparent border-b border-gray-900 p-0 text-inherit font-semibold text-[1.25rem] outline-none"
-        bind:value={editTitle}
-        on:keydown={(e) => {
-          if (e.key === 'Enter') renameBoardTitle();
-          if (e.key === 'Escape') cancelEditTitle();
-        }}
-      />
-    {:else}
-      <button
-        class="bg-transparent border-none p-0 text-inherit font-semibold text-[1.25rem] cursor-pointer hover:opacity-80 hover:bg-transparent"
-        on:click={startEditTitle}
-      >
-        {board ? board.title : '\u2026'}
-      </button>
-    {/if}
-  </nav>
+<div class="flex h-screen">
+  <WorkspaceSidebar api={api} activeWorkspaceId={board?.workspace_id || null} />
 
-  <div class="board-controls">
-    <button class="logout" on:click={onLogout}>Log out</button>
-  </div>
-</header>
-
-{#if error}
-  <div class="boards-error">
-    <p>{error}</p>
-    <button class="secondary" on:click={() => loadBoard(boardId)}>Retry</button>
-  </div>
-{:else if loading}
-  <p class="boards-empty">Loading board…</p>
-{:else}
-  {#if columns.length === 0}
-    <p class="boards-empty mb-4">No lists yet. Add a list to get started.</p>
-  {/if}
-
-  <div class="board">
-    {#each columns as column (column.id)}
-      <Column {column} cards={cards.filter(c => c.column_id === column.id)} on:cardMoved={handleCardMoved} on:archiveAll={handleArchiveAll} on:columnRenamed={handleColumnRenamed} on:columnMoved={handleColumnMoved} on:columnDeleted={handleColumnDeleted} api={api} />
-    {/each}
-
-    {#if showAddColumn}
-      <div class="flex flex-col justify-center w-[292px] min-w-[292px] min-h-[140px] p-0 bg-white bg-[radial-gradient(circle,#e5e5e5_1px,transparent_1px)] bg-[length:12px_12px] rounded-[10px] border border-dashed border-[#e6e6e6] transition hover:border-[#d4d4d4] hover:bg-[#fafafa]">
-        <div class="flex-1 flex flex-col justify-center gap-2 p-3">
+  <div class="flex-1 flex flex-col min-w-0 p-6">
+    <header class="app-header">
+      <nav class="breadcrumb">
+        <a href={`/workspace/${board?.workspace_id || ''}`} use:link class="breadcrumb-link">Boards</a>
+        <span class="breadcrumb-sep">/</span>
+        {#if editingTitle}
           <input
-            bind:this={columnInput}
-            class="w-full px-2 py-1.5 border border-[#e6e6e6] rounded-lg bg-white text-base font-medium text-gray-900 outline-none focus:border-gray-900"
-            bind:value={newColumnTitle}
-            placeholder="Column title"
+            bind:this={titleInput}
+            class="min-w-[200px] bg-transparent border-b border-gray-900 p-0 text-inherit font-semibold text-[1.25rem] outline-none"
+            bind:value={editTitle}
             on:keydown={(e) => {
-              if (e.key === 'Enter') addColumn();
-              if (e.key === 'Escape') cancelAddColumn();
+              if (e.key === 'Enter') renameBoardTitle();
+              if (e.key === 'Escape') cancelEditTitle();
             }}
           />
-          <div class="flex gap-2">
-            <button class="flex-1" on:click={addColumn}>Add</button>
-            <button class="flex-1 secondary" on:click={cancelAddColumn}>Cancel</button>
-          </div>
-        </div>
+        {:else}
+          <button
+            class="bg-transparent border-none p-0 text-inherit font-semibold text-[1.25rem] cursor-pointer hover:opacity-80 hover:bg-transparent"
+            on:click={startEditTitle}
+          >
+            {board ? board.title : '…'}
+          </button>
+        {/if}
+      </nav>
+
+      <div class="board-controls">
+        <button class="logout" on:click={onLogout}>Log out</button>
       </div>
-    {:else}
-      <button
-        class="flex flex-col items-center justify-center w-[292px] min-w-[292px] min-h-[140px] p-3 bg-transparent bg-[radial-gradient(circle,#e5e5e5_1px,transparent_1px)] bg-[length:12px_12px] rounded-[10px] border border-dashed border-[#e6e6e6] cursor-pointer transition hover:border-[#d4d4d4] hover:bg-transparent text-gray-500 hover:text-gray-900"
-        on:click={openAddColumn}
-      >
-        <span class="text-[1.75rem] font-light leading-none" aria-hidden="true">+</span>
-        <span class="text-sm">Add column</span>
-      </button>
-    {/if}
+    </header>
+
+    <div class="flex-1 overflow-auto">
+      {#if error}
+        <div class="boards-error">
+          <p>{error}</p>
+          <button class="secondary" on:click={() => loadBoard(boardId)}>Retry</button>
+        </div>
+      {:else if loading}
+        <p class="boards-empty">Loading board…</p>
+      {:else}
+        {#if columns.length === 0}
+          <p class="boards-empty mb-4">No lists yet. Add a list to get started.</p>
+        {/if}
+
+        <div class="board">
+          {#each columns as column (column.id)}
+            <Column {column} cards={cards.filter(c => c.column_id === column.id)} on:cardMoved={handleCardMoved} on:archiveAll={handleArchiveAll} on:columnRenamed={handleColumnRenamed} on:columnMoved={handleColumnMoved} on:columnDeleted={handleColumnDeleted} api={api} />
+          {/each}
+
+          {#if showAddColumn}
+            <div class="flex flex-col justify-center w-[292px] min-w-[292px] min-h-[140px] p-0 bg-white bg-[radial-gradient(circle,#e5e5e5_1px,transparent_1px)] bg-[length:12px_12px] rounded-[10px] border border-dashed border-[#e6e6e6] transition hover:border-[#d4d4d4] hover:bg-[#fafafa]">
+              <div class="flex-1 flex flex-col justify-center gap-2 p-3">
+                <input
+                  bind:this={columnInput}
+                  class="w-full px-2 py-1.5 border border-[#e6e6e6] rounded-lg bg-white text-base font-medium text-gray-900 outline-none focus:border-gray-900"
+                  bind:value={newColumnTitle}
+                  placeholder="Column title"
+                  on:keydown={(e) => {
+                    if (e.key === 'Enter') addColumn();
+                    if (e.key === 'Escape') cancelAddColumn();
+                  }}
+                />
+                <div class="flex gap-2">
+                  <button class="flex-1" on:click={addColumn}>Add</button>
+                  <button class="flex-1 secondary" on:click={cancelAddColumn}>Cancel</button>
+                </div>
+              </div>
+            </div>
+          {:else}
+            <button
+              class="flex flex-col items-center justify-center w-[292px] min-w-[292px] min-h-[140px] p-3 bg-transparent bg-[radial-gradient(circle,#e5e5e5_1px,transparent_1px)] bg-[length:12px_12px] rounded-[10px] border border-dashed border-[#e6e6e6] cursor-pointer transition hover:border-[#d4d4d4] hover:bg-transparent text-gray-500 hover:text-gray-900"
+              on:click={openAddColumn}
+            >
+              <span class="text-[1.75rem] font-light leading-none" aria-hidden="true">+</span>
+              <span class="text-sm">Add column</span>
+            </button>
+          {/if}
+        </div>
+      {/if}
+    </div>
   </div>
-{/if}
+</div>

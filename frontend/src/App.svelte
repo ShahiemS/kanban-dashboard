@@ -1,6 +1,7 @@
 <script>
   import Router from 'svelte-spa-router';
   import { wrap } from 'svelte-spa-router/wrap';
+  import WorkspaceList from './lib/WorkspaceList.svelte';
   import BoardsList from './lib/BoardsList.svelte';
   import BoardView from './lib/BoardView.svelte';
   import Login from './lib/Login.svelte';
@@ -14,6 +15,7 @@
 
   const routes = {
     '/': wrap({ component: BoardsList, props: { api: API, onLogout: logout } }),
+    '/workspace/:id': wrap({ component: BoardsList, props: { api: API, onLogout: logout } }),
     '/board/:id': wrap({ component: BoardView, props: { api: API, onLogout: logout } })
   };
 

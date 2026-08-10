@@ -6,9 +6,18 @@ const schema = fs.readFileSync('./init.sql', 'utf8');
 await pool.query(schema);
 console.log('Migrations applied');
 
+const { rows: workspaceCount } = await pool.query('SELECT COUNT(*) FROM workspaces');
+if (parseInt(workspaceCount[0].count, 10) === 0) {
+  await pool.query(`INSERT INTO workspaces (title) VALUES ('Default')`);
+  console.log('Default workspace seeded');
+}
+
+const { rows: defaultWorkspace } = await pool.query('SELECT id FROM workspaces LIMIT 1');
+await pool.query('UPDATE boards SET workspace_id = $1 WHERE workspace_id IS NULL', [defaultWorkspace[0].id]);
+
 const { rows: boardCount } = await pool.query('SELECT COUNT(*) FROM boards');
 if (parseInt(boardCount[0].count, 10) === 0) {
-  await pool.query(`INSERT INTO boards (title) VALUES ('Default')`);
+  await pool.query(`INSERT INTO boards (title, workspace_id) VALUES ($1, $2)`, ['Default', defaultWorkspace[0].id]);
   console.log('Default board seeded');
 }
 

@@ -6,7 +6,8 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { get } from 'svelte/store';
-  import Modal from './Modal.svelte';
+  import { fly } from 'svelte/transition';
+  import { DotsThree, Link, X } from 'phosphor-svelte';
 
   export let card;
   export let api;
@@ -18,6 +19,7 @@
   let detailDescription = '';
   let checklist = [];
   let newChecklistItem = '';
+  let showCompleted = true;
 
   $: meta = card.meta || {};
   $: coverImage = meta.cover_image || '';
@@ -25,6 +27,9 @@
   $: tags = Array.isArray(meta.tags) && meta.tags.length
     ? meta.tags
     : (meta.tag ? [{ label: meta.tag, color: meta.tag_color || '#0079bf' }] : []);
+  $: completedCount = checklist.filter(i => i.done).length;
+  $: totalCount = checklist.length;
+  $: progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   function onDragStart(e) {
     e.dataTransfer.setData('cardId', card.id);
@@ -108,6 +113,7 @@
     detailDescription = card.description || '';
     checklist = Array.isArray(meta.subtasks) ? meta.subtasks : [];
     newChecklistItem = '';
+    showCompleted = true;
   }
 
   async function saveDetail() {
@@ -152,7 +158,15 @@
   }
 </script>
 
-<svelte:window on:click={closeMenus} on:keydown={(e) => e.key === 'Escape' && closeMenus()} />
+<svelte:window
+  on:click={closeMenus}
+  on:keydown={(e) => {
+    if (e.key === 'Escape') {
+      detailOpen = false;
+      closeMenus();
+    }
+  }}
+/>
 
 <div
   class="group relative bg-white rounded-[10px] border border-[#e6e6e6] p-2 mb-2 cursor-grab active:cursor-grabbing transition-colors hover:border-[#d4d4d4] hover:bg-[#fafafa]"
@@ -170,11 +184,7 @@
       on:click|stopPropagation={toggleMenu}
       aria-label="More options"
     >
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-        <circle cx="5" cy="12" r="2" />
-        <circle cx="12" cy="12" r="2" />
-        <circle cx="19" cy="12" r="2" />
-      </svg>
+      <DotsThree size={14} weight="bold" />
     </button>
     {#if $activeMenu?.cardId === card.id && $activeMenu?.type === 'menu'}
       <div class="absolute bottom-full right-0 z-30 min-w-[140px] rounded-[10px] border border-[#e6e6e6] bg-white p-1 shadow-[0_6px_16px_rgba(0,0,0,0.06)]">
@@ -219,10 +229,7 @@
           class="inline-flex max-w-[130px] items-center gap-1 text-xs text-blue-600 hover:underline"
           on:click|stopPropagation
         >
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-          </svg>
+          <Link size={12} />
           <span class="truncate">{link.label}</span>
         </a>
       {/each}
@@ -271,101 +278,148 @@
 {/if}
 
 {#if detailOpen}
-  <Modal title={card.title} on:close={() => detailOpen = false}>
-    <div class="space-y-4">
-      {#if coverImage}
-        <img class="h-40 w-full rounded-lg object-cover" src={coverImage} alt="" />
-      {/if}
-
-      <div class="flex flex-col gap-1">
-        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide" for="card-detail-title">Title</label>
-        <input
-          id="card-detail-title"
-          class="w-full px-2 py-1.5 border border-[#e6e6e6] rounded-lg bg-white text-sm font-semibold text-gray-900 outline-none focus:border-gray-900"
-          bind:value={detailTitle}
-        />
+  <div class="fixed inset-0 z-50">
+    <div
+      class="absolute inset-0 bg-black/25 transition-opacity"
+      role="presentation"
+      on:click={() => detailOpen = false}
+      on:keydown={(e) => e.key === 'Escape' && (detailOpen = false)}
+    />
+    <div
+      class="absolute right-0 top-0 h-full w-[480px] max-w-full bg-white shadow-2xl flex flex-col"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Card details"
+      transition:fly={{ x: 480, duration: 200, opacity: 1 }}
+    >
+      <div class="flex items-center justify-between px-5 py-4 border-b border-[#e6e6e6] shrink-0">
+        <h2 class="text-lg font-semibold text-gray-900">Card details</h2>
+        <button
+          class="flex items-center justify-center w-8 h-8 rounded-md bg-transparent border-none text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+          on:click={() => detailOpen = false}
+          aria-label="Close"
+        >
+          <X size={18} />
+        </button>
       </div>
 
-      <div class="flex flex-col gap-1">
-        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide" for="card-detail-desc">Description</label>
-        <textarea
-          id="card-detail-desc"
-          class="w-full px-2 py-1.5 border border-[#e6e6e6] rounded-lg bg-white text-sm text-gray-700 outline-none focus:border-gray-900 resize-none"
-          bind:value={detailDescription}
-          rows="4"
-        />
-      </div>
+      <div class="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+        {#if coverImage}
+          <img class="h-48 w-full rounded-xl object-cover" src={coverImage} alt="" />
+        {/if}
 
-      <div class="flex flex-col gap-2">
-        <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Checklist</h4>
-        {#if checklist.length > 0}
-          <ul class="space-y-1">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide" for="card-detail-title">Title</label>
+          <input
+            id="card-detail-title"
+            class="w-full px-3 py-2 border border-[#e6e6e6] rounded-lg bg-white text-sm font-semibold text-gray-900 outline-none focus:border-gray-900"
+            bind:value={detailTitle}
+          />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide" for="card-detail-desc">Description</label>
+          <textarea
+            id="card-detail-desc"
+            class="w-full px-3 py-2 border border-[#e6e6e6] rounded-lg bg-white text-sm text-gray-700 outline-none focus:border-gray-900 resize-none"
+            bind:value={detailDescription}
+            rows="4"
+          />
+        </div>
+
+        <div class="rounded-xl border border-[#e6e6e6] bg-white p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Checklist</h4>
+            <span class="text-xs font-medium text-gray-500">{completedCount}/{totalCount}</span>
+          </div>
+
+          {#if totalCount > 0}
+            <div class="flex items-center gap-2">
+              <div class="h-2 flex-1 rounded-full bg-gray-200 overflow-hidden">
+                <div class="h-full rounded-full bg-emerald-500 transition-all" style="width: {progressPercent}%"></div>
+              </div>
+              <span class="text-xs font-medium text-gray-500">{progressPercent}%</span>
+            </div>
+            <button
+              class="text-xs font-medium text-gray-500 hover:text-gray-900"
+              on:click={() => showCompleted = !showCompleted}
+            >
+              {showCompleted ? 'Hide completed' : 'Show completed'}
+            </button>
+          {/if}
+
+          <ul class="space-y-2">
             {#each checklist as item, i}
-              <li class="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  bind:checked={item.done}
-                  on:change={() => toggleChecklistItem(i)}
-                />
-                <span class="text-sm text-gray-800" class:line-through={item.done}>{item.text}</span>
-                <button
-                  class="ml-auto text-xs text-gray-400 hover:text-red-600"
-                  on:click={() => deleteChecklistItem(i)}
-                >
-                  Delete
-                </button>
-              </li>
+              {#if showCompleted || !item.done}
+                <li class="flex items-center gap-2 group">
+                  <input
+                    type="checkbox"
+                    class="w-4 h-4 rounded border-gray-300 accent-emerald-500 cursor-pointer"
+                    bind:checked={item.done}
+                    on:change={() => toggleChecklistItem(i)}
+                  />
+                  <span class="text-sm text-gray-800 flex-1" class:line-through={item.done} class:text-gray-400={item.done}>{item.text}</span>
+                  <button
+                    class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600 transition"
+                    on:click={() => deleteChecklistItem(i)}
+                    aria-label="Delete item"
+                  >
+                    <X size={14} />
+                  </button>
+                </li>
+              {/if}
             {/each}
           </ul>
-        {/if}
-        <div class="flex gap-2">
-          <input
-            class="flex-1 px-2 py-1 border border-[#e6e6e6] rounded-lg text-sm text-gray-900 outline-none focus:border-gray-900"
-            bind:value={newChecklistItem}
-            placeholder="Add checklist item"
-            on:keydown={(e) => e.key === 'Enter' && addChecklistItem()}
-          />
-          <button class="px-3 py-1 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800" on:click={addChecklistItem}>Add</button>
-        </div>
-      </div>
 
-      {#if links.length > 0}
-        <div class="flex flex-col gap-2">
-          <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Links</h4>
-          <div class="flex flex-wrap gap-3">
-            {#each links as link}
-              <a
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="inline-flex max-w-[160px] items-center gap-1 text-xs text-blue-600 hover:underline"
-              >
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
-                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                </svg>
-                <span class="truncate">{link.label}</span>
-              </a>
-            {/each}
+          <div class="flex gap-2">
+            <input
+              class="flex-1 px-3 py-1.5 border border-[#e6e6e6] rounded-lg text-sm text-gray-900 outline-none focus:border-gray-900"
+              bind:value={newChecklistItem}
+              placeholder="Add checklist item"
+              on:keydown={(e) => e.key === 'Enter' && addChecklistItem()}
+            />
+            <button class="px-3 py-1.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800" on:click={addChecklistItem}>Add</button>
           </div>
         </div>
-      {/if}
 
-      {#if tags.length > 0}
-        <div class="flex flex-wrap gap-1.5">
-          {#each tags as t}
-            <span
-              class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
-              style="background-color: {t.color}1a; color: {t.color}"
-            >
-              {t.label}
-            </span>
-          {/each}
-        </div>
-      {/if}
+        {#if links.length > 0}
+          <div class="flex flex-col gap-2">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Links</h4>
+            <div class="flex flex-wrap gap-3">
+              {#each links as link}
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex max-w-[160px] items-center gap-1 text-xs text-blue-600 hover:underline"
+                >
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  </svg>
+                  <span class="truncate">{link.label}</span>
+                </a>
+              {/each}
+            </div>
+          </div>
+        {/if}
 
-      <div class="flex justify-between pt-2">
-        <button class="px-3 py-1.5 rounded-lg border border-transparent bg-transparent text-sm text-red-600 hover:bg-red-50" on:click={deleteDetail}>
+        {#if tags.length > 0}
+          <div class="flex flex-wrap gap-1.5">
+            {#each tags as t}
+              <span
+                class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
+                style="background-color: {t.color}1a; color: {t.color}"
+              >
+                {t.label}
+              </span>
+            {/each}
+          </div>
+        {/if}
+      </div>
+
+      <div class="flex items-center justify-between px-5 py-4 border-t border-[#e6e6e6] shrink-0">
+        <button class="px-3 py-1.5 rounded-lg bg-transparent text-sm text-red-600 hover:bg-red-50" on:click={deleteDetail}>
           Delete
         </button>
         <div class="flex gap-2">
@@ -378,5 +432,5 @@
         </div>
       </div>
     </div>
-  </Modal>
+  </div>
 {/if}
