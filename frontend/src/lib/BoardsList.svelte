@@ -226,7 +226,7 @@
         <div class="flex items-center gap-2">
           <input
             bind:this={workspaceTitleInput}
-            class="min-w-[200px] px-2 py-1 text-xl font-semibold text-gray-900 bg-transparent border-b border-gray-900 outline-none"
+            class="min-w-[200px] px-2 py-1 text-xl font-semibold text-gray-900 bg-transparent border-none outline-none"
             bind:value={editWorkspaceTitle}
             on:keydown={(e) => {
               if (e.key === 'Enter') saveWorkspaceTitle();
@@ -345,7 +345,7 @@
           {/each}
 
           {#if !showArchived}
-            <div class="group relative flex flex-col min-h-[140px] p-0 bg-white bg-[radial-gradient(circle,#e5e5e5_1px,transparent_1px)] bg-[length:12px_12px] rounded-[10px] border border-dashed border-[#e6e6e6] cursor-pointer transition hover:border-[#d4d4d4] hover:bg-[#fafafa] text-gray-500 hover:text-gray-900">
+            <div class="group relative flex flex-col min-h-[140px] p-0 bg-white bg-[radial-gradient(circle,#e5e5e5_1px,transparent_1px)] bg-[length:12px_12px] rounded-[10px] cursor-pointer transition hover:bg-[#fafafa] text-gray-500 hover:text-gray-900">
               {#if addingBoard}
                 <div class="flex-1 flex flex-col justify-center gap-2 p-3">
                   <input

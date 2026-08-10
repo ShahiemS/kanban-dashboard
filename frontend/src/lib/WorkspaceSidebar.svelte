@@ -1,7 +1,7 @@
 <script>
   import { onMount, tick } from 'svelte';
   import { link } from 'svelte-spa-router';
-  import { DotsThree } from 'phosphor-svelte';
+  import { DotsThree, CaretLeft, List } from 'phosphor-svelte';
   import { workspaces } from './workspaceStore.js';
 
   export let api;
@@ -15,6 +15,14 @@
   let addingWorkspace = false;
   let newWorkspaceTitle = '';
   let newWorkspaceInput = null;
+  let collapsed = false;
+  let workspaceBoards = {};
+
+  $: if (activeWorkspaceId) loadWorkspaceBoards(activeWorkspaceId);
+
+  function toggleSidebar() {
+    collapsed = !collapsed;
+  }
 
   onMount(loadWorkspaces);
 
@@ -30,6 +38,18 @@
       error = 'Could not load workspaces';
     } finally {
       loading = false;
+    }
+  }
+
+  async function loadWorkspaceBoards(workspaceId) {
+    try {
+      const res = await fetch(`${api}/api/boards?workspace_id=${workspaceId}&archived=false`);
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      const boards = await res.json();
+      workspaceBoards[workspaceId] = boards;
+      workspaceBoards = workspaceBoards; // trigger reactivity
+    } catch (err) {
+      console.error('[WorkspaceSidebar] failed to load boards', err);
     }
   }
 
@@ -117,11 +137,29 @@
   }}
 />
 
-<div class="flex flex-col w-60 h-full bg-[#f8f8f8] border-r border-[#e6e6e6]">
-  <div class="p-4 pb-6">
-    <h2 class="text-base font-semibold text-gray-900">Workspaces</h2>
+<div class="flex flex-col h-full bg-[#f8f8f8] border-r border-[#e6e6e6] transition-all duration-200 {collapsed ? 'w-12' : 'w-60'}">
+  <div class="p-4 pb-6 flex items-center justify-between">
+    {#if !collapsed}
+      <h2 class="text-base font-semibold text-gray-900">Workspaces</h2>
+      <button
+        class="!bg-transparent !border-transparent p-0 m-0 text-gray-400 hover:text-gray-900"
+        on:click={toggleSidebar}
+        aria-label="Close sidebar"
+      >
+        <CaretLeft size={14} weight="bold" />
+      </button>
+    {:else}
+      <button
+        class="!bg-transparent !border-transparent p-0 m-0 text-gray-400 hover:text-gray-900"
+        on:click={toggleSidebar}
+        aria-label="Open sidebar"
+      >
+        <List size={14} weight="bold" />
+      </button>
+    {/if}
   </div>
 
+  {#if !collapsed}
   <div class="flex-1 overflow-y-auto p-2 space-y-0.5">
     {#if loading}
       <p class="px-3 py-2 text-xs text-gray-500">Loading…</p>
@@ -133,7 +171,7 @@
           {#if editingWorkspaceId === workspace.id}
             <div class="px-2 py-1.5">
               <input
-                class="w-full px-2 py-1 text-sm border border-gray-900 rounded-md bg-white outline-none"
+                class="w-full px-2 py-1 text-sm bg-transparent border-none outline-none"
                 bind:value={editTitle}
                 on:keydown={(e) => {
                   if (e.key === 'Enter') renameWorkspace(workspace);
@@ -170,6 +208,19 @@
                 <button class="block w-full rounded-md border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-red-600 hover:bg-red-50" on:click={() => deleteWorkspace(workspace)}>Delete</button>
               </div>
             {/if}
+            {#if activeWorkspaceId === workspace.id && workspaceBoards[workspace.id]?.length}
+              <div class="pl-4 py-1 space-y-0.5">
+                {#each workspaceBoards[workspace.id] as board}
+                  <a
+                    use:link
+                    href={`/board/${board.id}`}
+                    class="block px-2 py-1 rounded-md text-xs text-gray-600 hover:bg-white hover:text-gray-900 truncate no-underline transition"
+                  >
+                    {board.title}
+                  </a>
+                {/each}
+              </div>
+            {/if}
           {/if}
         </div>
       {/each}
@@ -202,4 +253,5 @@
       </button>
     {/if}
   </div>
+{/if}
 </div>
