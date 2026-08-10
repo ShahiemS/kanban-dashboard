@@ -145,7 +145,15 @@
   <div class="column-header">
     {#if editingTitle}
       <div class="column-rename">
-        <input type="text" class="column-rename-input" bind:value={editTitle} />
+        <input
+          type="text"
+          class="column-rename-input"
+          bind:value={editTitle}
+          on:keydown={(e) => {
+            if (e.key === 'Enter') renameColumn();
+            if (e.key === 'Escape') cancelRename();
+          }}
+        />
         <button on:click={renameColumn}>Save</button>
         <button class="secondary" on:click={cancelRename}>Cancel</button>
       </div>

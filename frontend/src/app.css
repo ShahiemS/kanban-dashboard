@@ -20,69 +20,47 @@
 }
 
 * {
-  box-sizing: border-box;
+  @apply box-border;
 }
 
 svg {
-  flex-shrink: 0;
+  @apply shrink-0;
 }
 
 body {
-  margin: 0;
-  padding: 0;
-  background: var(--bg);
+  @apply m-0 p-0 bg-[var(--bg)];
 }
 
 ::selection {
-  background: #171717;
-  color: #fff;
+  @apply bg-[#171717] text-white;
 }
 
 /* ---------- Buttons ---------- */
 
 button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  cursor: pointer;
-  padding: 0.4rem 0.75rem;
-  border: 1px solid var(--accent);
-  border-radius: 8px;
-  background: var(--accent);
-  color: #fff;
   font: inherit;
-  font-size: 0.875rem;
-  font-weight: 500;
-  line-height: 1.25rem;
+  @apply inline-flex items-center justify-center gap-[0.4rem] cursor-pointer py-[0.4rem] px-3 border border-solid border-[var(--accent)] rounded-lg bg-[var(--accent)] text-white text-sm font-medium leading-5;
   transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
 
 button:hover {
-  background: #333333;
-  border-color: #333333;
+  @apply bg-[#333333] border-[#333333];
 }
 
 button:focus-visible {
-  outline: 2px solid #171717;
-  outline-offset: 2px;
+  @apply outline-[2px_solid_#171717] outline-offset-2;
 }
 
 button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  @apply opacity-50 cursor-not-allowed;
 }
 
 button.secondary {
-  background: var(--surface);
-  border-color: var(--border);
-  color: var(--text);
+  @apply bg-[var(--surface)] border-[var(--border)] text-[var(--text)];
 }
 
 button.secondary:hover {
-  background: var(--surface-subtle);
-  border-color: var(--border-strong);
-  color: var(--text);
+  @apply bg-[var(--surface-subtle)] border-[var(--border-strong)] text-[var(--text)];
 }
 
 /* ---------- Inputs ---------- */
@@ -91,569 +69,328 @@ input,
 textarea,
 select {
   font: inherit;
-  font-size: 0.875rem;
-  color: var(--text);
+  @apply text-sm text-[var(--text)];
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: var(--text-faint);
+  @apply text-[var(--text-faint)];
 }
 
 /* ---------- Login ---------- */
 
 .login-screen {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  padding: 2rem;
+  @apply flex items-center justify-center min-h-screen p-8;
 }
 
 .login-card {
-  width: 100%;
-  max-width: 340px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
-  padding: 2rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  text-align: center;
+  @apply w-full max-w-[340px] flex flex-col gap-[0.7rem] p-8 bg-[var(--surface)] border border-solid border-[var(--border)] rounded-[14px] text-center;
 }
 
 .login-card h1 {
-  margin: 0;
-  font-size: 1.35rem;
-  font-weight: 600;
-  color: var(--text);
-  letter-spacing: -0.02em;
+  @apply m-0 text-[1.35rem] font-semibold text-[var(--text)] tracking-[-0.02em];
 }
 
 .login-subtitle {
-  margin: 0 0 0.4rem;
-  color: var(--text-muted);
-  font-size: 0.875rem;
+  @apply mb-[0.4rem] text-[var(--text-muted)] text-sm;
 }
 
 .login-card input {
-  padding: 0.55rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  text-align: center;
+  @apply py-[0.55rem] px-3 border border-solid border-[var(--border)] rounded-lg bg-[var(--surface)] text-center;
 }
 
 .login-card input:focus {
   outline: none;
-  border-color: var(--text);
+  @apply border-[var(--text)];
 }
 
 .login-error {
-  margin: 0;
-  color: var(--danger);
-  font-size: 0.8rem;
+  @apply m-0 text-[var(--danger)] text-[0.8rem];
 }
 
 button.logout {
-  background: var(--surface);
-  border-color: var(--border);
-  color: var(--text-muted);
-  font-weight: 500;
+  @apply bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)] font-medium;
 }
 
 button.logout:hover {
-  background: var(--surface-subtle);
-  border-color: var(--border-strong);
-  color: var(--text);
+  @apply bg-[var(--surface-subtle)] border-[var(--border-strong)] text-[var(--text)];
 }
 
 /* ---------- Header ---------- */
 
 .app-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1.25rem;
-  border-bottom: 1px solid var(--border);
+  @apply flex flex-wrap items-center justify-between gap-4;
 }
 
 .app-header h1 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text);
-  letter-spacing: -0.02em;
+  @apply m-0 text-xl font-semibold text-[var(--text)] tracking-[-0.02em];
 }
 
 .board-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
+  @apply flex flex-wrap items-center gap-3;
 }
 
 .control-group {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
+  @apply flex items-center gap-[0.4rem];
 }
 
 .control-group input,
 .control-group select {
-  padding: 0.4rem 0.7rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
+  @apply py-[0.4rem] px-[0.7rem] border border-solid border-[var(--border)] rounded-lg bg-[var(--surface)];
 }
 
 .control-group input {
-  min-width: 200px;
+  @apply min-w-[200px];
 }
 
 .control-group input:focus,
 .control-group select:focus {
   outline: none;
-  border-color: var(--border-strong);
+  @apply border-[var(--border-strong)];
 }
 
 .control-group button {
-  flex-shrink: 0;
+  @apply shrink-0;
 }
 
 .breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text);
-  letter-spacing: -0.02em;
+  @apply flex items-center gap-[0.45rem] m-0 text-xl font-semibold text-[var(--text)] tracking-[-0.02em];
 }
 
 .breadcrumb-link {
-  color: var(--text-faint);
-  text-decoration: none;
+  @apply text-[var(--text-faint)] no-underline;
 }
 
 .breadcrumb-link:hover {
-  color: var(--text);
+  @apply text-[var(--text)];
 }
 
 .breadcrumb-sep {
-  color: #d4d4d4;
-  font-weight: 400;
+  @apply text-[#d4d4d4] font-normal;
 }
 
 .breadcrumb-current {
-  color: var(--text);
+  @apply text-[var(--text)];
 }
 
 /* ---------- Boards list ---------- */
 
 .boards-empty {
-  color: var(--text-muted);
-  font-size: 0.9rem;
+  @apply text-[var(--text-muted)] text-[0.9rem];
 }
 
 .boards-error {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: var(--surface);
-  border: 1px solid #fca5a5;
-  border-radius: var(--radius);
-  color: var(--danger);
-  font-size: 0.875rem;
+  @apply flex items-center gap-3 py-3 px-4 bg-[var(--surface)] border border-solid border-[#fca5a5] rounded-[var(--radius)] text-[var(--danger)] text-sm;
 }
 
 .boards-error p {
-  margin: 0;
-  flex: 1;
+  @apply m-0 flex-1;
 }
 
 .boards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 0.85rem;
+  @apply grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-[0.85rem];
 }
 
 .archived-toggle {
-  background: transparent;
-  border-color: transparent;
-  color: var(--text-muted);
-  font-weight: 500;
+  @apply bg-transparent border-transparent text-[var(--text-muted)] font-medium;
 }
 
 .archived-toggle:hover {
-  background: var(--surface-subtle);
-  border-color: var(--border);
-  color: var(--text);
+  @apply bg-[var(--surface-subtle)] border-[var(--border)] text-[var(--text)];
 }
 
 /* ---------- Board / columns ---------- */
 
 .board {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.85rem;
-  overflow-x: auto;
-  padding-bottom: 1rem;
-  min-height: 70vh;
+  @apply flex items-start gap-[0.85rem] overflow-x-auto pb-4 min-h-[70vh];
 }
 
 .column {
-  display: flex;
-  flex-direction: column;
-  width: 292px;
-  min-width: 292px;
-  max-height: 82vh;
-  padding: 0.6rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  @apply flex flex-col w-[292px] min-w-[292px] max-h-[82vh] p-[0.6rem] bg-[var(--surface)] border border-solid border-[var(--border)] rounded-xl;
   transition: border-color 0.12s ease, background-color 0.12s ease;
 }
 
 .column-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.15rem 0.25rem 0.6rem;
+  @apply flex items-center justify-between gap-2 pt-[0.15rem] px-1 pb-[0.6rem];
 }
 
 .column-title {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin: 0;
-  min-width: 0;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--text);
-  letter-spacing: -0.01em;
+  @apply flex items-center gap-[0.45rem] m-0 min-w-0 text-[0.8125rem] font-semibold text-[var(--text)] tracking-[-0.01em];
 }
 
 .column-title-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  @apply overflow-hidden text-ellipsis whitespace-nowrap;
 }
 
 .column-count {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 0.35rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface-subtle);
-  color: var(--text-muted);
-  font-size: 0.6875rem;
-  font-weight: 500;
+  @apply shrink-0 inline-flex items-center justify-center min-w-[20px] h-[20px] px-[0.35rem] border border-solid border-[var(--border)] rounded-full bg-[var(--surface-subtle)] text-[var(--text-muted)] text-[0.6875rem] font-medium;
 }
 
 .column-menu-wrapper {
-  position: relative;
-  flex-shrink: 0;
+  @apply relative shrink-0;
 }
 
 .column-menu-btn {
-  color: var(--text-faint);
+  @apply text-[var(--text-faint)];
 }
 
 .column-menu-btn:hover {
-  background: #f0f0f0;
-  color: var(--text);
+  @apply bg-[#f0f0f0] text-[var(--text)];
 }
 
 .column-menu-dropdown {
-  min-width: 150px;
+  @apply min-w-[150px];
 }
 
 .column-rename {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  width: 100%;
+  @apply flex items-center gap-[0.35rem] w-full;
 }
 
 .column-rename button {
-  padding: 0.3rem 0.55rem;
-  font-size: 0.8rem;
+  @apply py-[0.3rem] px-[0.55rem] text-[0.8rem];
 }
 
 .column-rename-input {
-  flex: 1;
-  min-width: 0;
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--text);
-  border-radius: 7px;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--text);
+  @apply flex-1 min-w-0 py-[0.35rem] px-2 border border-solid border-[var(--text)] rounded-[7px] text-[0.8125rem] font-medium text-[var(--text)];
   outline: none;
 }
 
 .cards {
-  flex: 1;
-  overflow-y: auto;
-  margin: 0 -0.25rem;
-  padding: 0 0.25rem;
+  @apply flex-1 overflow-y-auto mx-[-0.25rem] px-1;
   scrollbar-width: thin;
 }
 
 /* ---------- Card actions & menus ---------- */
 
 .card-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-faint);
-  line-height: 1;
+  @apply inline-flex items-center justify-center w-[26px] h-[26px] p-0 border border-solid border-transparent rounded-md bg-transparent text-[var(--text-faint)] leading-none;
 }
 
 .card-action:hover {
-  background: #f0f0f0;
-  border-color: transparent;
-  color: var(--text);
+  @apply bg-[#f0f0f0] border-transparent text-[var(--text)];
 }
 
 .card-menu-wrapper {
-  position: relative;
+  @apply relative;
 }
 
 .card-menu-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 30;
-  min-width: 140px;
-  padding: 0.25rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+  @apply absolute top-[calc(100%+6px)] right-0 z-30 min-w-[140px] p-1 bg-[var(--surface)] border border-solid border-[var(--border)] rounded-[10px] shadow-[0_6px_16px_rgba(0,0,0,0.06)];
 }
 
 .card-menu-dropdown button {
-  display: block;
-  width: 100%;
-  padding: 0.4rem 0.55rem;
-  background: transparent;
-  border-color: transparent;
-  color: var(--text);
-  font-size: 0.8125rem;
-  font-weight: 400;
-  text-align: left;
-  border-radius: 6px;
+  @apply block w-full py-[0.4rem] px-[0.55rem] bg-transparent border-transparent text-[var(--text)] text-[0.8125rem] font-normal text-left rounded-md;
 }
 
 .card-menu-dropdown button:hover {
-  background: var(--surface-subtle);
-  border-color: transparent;
-  color: var(--text);
+  @apply bg-[var(--surface-subtle)] border-transparent text-[var(--text)];
 }
 
 .card-menu-dropdown button.danger,
 .card-menu-dropdown button.danger:hover,
 .column-menu-dropdown button.danger:hover {
-  color: var(--danger);
-  background: #fef2f2;
-  border-color: transparent;
+  @apply text-[var(--danger)] bg-[#fef2f2] border-transparent;
 }
 
 .card-menu-dropdown button.danger {
-  background: transparent;
+  @apply bg-transparent;
 }
 
 /* ---------- Modal ---------- */
 
 .modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 8vh 1rem 2rem;
-  background: rgba(23, 23, 23, 0.25);
-  backdrop-filter: blur(2px);
-  overflow-y: auto;
+  @apply fixed inset-0 z-[100] flex items-start justify-center pt-[8vh] px-4 pb-8 bg-[rgba(23,23,23,0.25)] backdrop-blur-[2px] overflow-y-auto;
 }
 
 .modal-panel {
-  width: 100%;
-  max-width: 460px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
+  @apply w-full max-w-[460px] bg-[var(--surface)] border border-solid border-[var(--border)] rounded-[14px] shadow-[0_16px_40px_rgba(0,0,0,0.08)] overflow-hidden;
 }
 
 .modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.9rem 1.1rem;
-  border-bottom: 1px solid var(--border);
+  @apply flex items-center justify-between py-[0.9rem] px-[1.1rem] border-b border-solid border-[var(--border)];
 }
 
 .modal-title {
-  margin: 0;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text);
-  letter-spacing: -0.01em;
+  @apply m-0 text-[0.95rem] font-semibold text-[var(--text)] tracking-[-0.01em];
 }
 
 .modal-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  background: transparent;
-  border-color: transparent;
-  color: var(--text-faint);
-  border-radius: 7px;
+  @apply flex items-center justify-center w-[30px] h-[30px] p-0 bg-transparent border-transparent text-[var(--text-faint)] rounded-[7px];
 }
 
 .modal-close:hover {
-  background: var(--surface-subtle);
-  border-color: transparent;
-  color: var(--text);
+  @apply bg-[var(--surface-subtle)] border-transparent text-[var(--text)];
 }
 
 .modal-body {
-  padding: 1.1rem;
-  max-height: 75vh;
-  overflow-y: auto;
+  @apply p-[1.1rem] max-h-[75vh] overflow-y-auto;
 }
 
 /* ---------- Add card form ---------- */
 
 .add-card-form input,
 .add-card-form textarea {
-  width: 100%;
-  margin-bottom: 0.85rem;
-  padding: 0.5rem 0.65rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
+  @apply w-full mb-[0.85rem] py-2 px-[0.65rem] border border-solid border-[var(--border)] rounded-lg bg-[var(--surface)];
 }
 
 .add-card-form input:focus,
 .add-card-form textarea:focus {
   outline: none;
-  border-color: var(--text);
+  @apply border-[var(--text)];
 }
 
 .add-card-form textarea {
-  resize: vertical;
+  @apply resize-y;
 }
 
 .add-card-label {
-  display: block;
-  margin-bottom: 0.35rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--text-muted);
+  @apply block mb-[0.35rem] text-xs font-medium text-[var(--text-muted)];
 }
 
 .add-card-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0 0 0.9rem;
-  font-size: 0.8125rem;
-  color: var(--text-muted);
-  cursor: pointer;
+  @apply flex items-center gap-2 mb-[0.9rem] text-[0.8125rem] text-[var(--text-muted)] cursor-pointer;
 }
 
 .add-card-checkbox input {
-  width: auto;
-  margin: 0;
-  accent-color: #171717;
-  cursor: pointer;
+  @apply w-auto m-0 accent-[#171717] cursor-pointer;
 }
 
 .add-card-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
+  @apply flex items-center gap-[0.6rem];
 }
 
 .add-card-confirm {
-  font-size: 0.8125rem;
-  color: #16a34a;
+  @apply text-[0.8125rem] text-[#16a34a];
 }
 
 .add-card-trigger {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 0.4rem;
-  width: 100%;
-  margin-top: 0.35rem;
-  padding: 0.45rem 0.6rem;
-  background: transparent;
-  border: 1px dashed var(--border);
-  border-radius: 8px;
-  color: var(--text-muted);
-  font-size: 0.8125rem;
-  font-weight: 500;
+  @apply flex items-center justify-start gap-[0.4rem] w-full mt-[0.35rem] py-[0.45rem] px-[0.6rem] bg-transparent border border-dashed border-[var(--border)] rounded-lg text-[var(--text-muted)] text-[0.8125rem] font-medium;
 }
 
 .add-card-trigger:hover {
-  background: var(--surface-subtle);
-  border-color: var(--border-strong);
-  border-style: dashed;
-  color: var(--text);
+  @apply bg-[var(--surface-subtle)] border-[var(--border-strong)] border-dashed text-[var(--text)];
 }
 
 /* ---------- Drag state ---------- */
 
 .drag-over {
-  background: var(--surface-subtle);
-  border-color: var(--text);
-  border-style: dashed;
+  @apply bg-[var(--surface-subtle)] border-[var(--text)] border-dashed;
 }
 
 /* ---------- Scrollbars ---------- */
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  @apply w-2 h-2;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #e0e0e0;
-  border-radius: 999px;
+  @apply bg-[#e0e0e0] rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #cfcfcf;
+  @apply bg-[#cfcfcf];
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  @apply bg-transparent;
 }

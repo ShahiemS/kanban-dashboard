@@ -7,7 +7,7 @@
   import { createEventDispatcher } from 'svelte';
   import { get } from 'svelte/store';
   import { fly } from 'svelte/transition';
-  import { DotsThree, Link, X } from 'phosphor-svelte';
+  import { DotsThree, Link, X, Check } from 'phosphor-svelte';
 
   export let card;
   export let api;
@@ -327,7 +327,7 @@
           />
         </div>
 
-        <div class="rounded-xl border border-[#e6e6e6] bg-white p-4 space-y-3">
+        <div class="rounded-xl border border-[#e6e6e6] bg-white p-3 space-y-2">
           <div class="flex items-center justify-between">
             <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Checklist</h4>
             <span class="text-xs font-medium text-gray-500">{completedCount}/{totalCount}</span>
@@ -341,24 +341,29 @@
               <span class="text-xs font-medium text-gray-500">{progressPercent}%</span>
             </div>
             <button
-              class="text-xs font-medium text-gray-500 hover:text-gray-900"
+              class="text-xs font-medium text-emerald-600 hover:text-emerald-700"
               on:click={() => showCompleted = !showCompleted}
             >
               {showCompleted ? 'Hide completed' : 'Show completed'}
             </button>
           {/if}
 
-          <ul class="space-y-2">
+          <ul class="m-0 p-0 list-none space-y-2">
             {#each checklist as item, i}
               {#if showCompleted || !item.done}
                 <li class="flex items-center gap-2 group">
-                  <input
-                    type="checkbox"
-                    class="w-4 h-4 rounded border-gray-300 accent-emerald-500 cursor-pointer"
-                    bind:checked={item.done}
-                    on:change={() => toggleChecklistItem(i)}
-                  />
-                  <span class="text-sm text-gray-800 flex-1" class:line-through={item.done} class:text-gray-400={item.done}>{item.text}</span>
+                  <label class="flex items-center gap-2 flex-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      class="sr-only"
+                      checked={item.done}
+                      on:change={() => toggleChecklistItem(i)}
+                    />
+                    <span class="w-5 h-5 rounded border flex items-center justify-center transition {item.done ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white border-gray-300 text-transparent'}">
+                      {#if item.done}<Check size={12} weight="bold" />{/if}
+                    </span>
+                    <span class="text-sm text-gray-800 flex-1 select-none" class:line-through={item.done} class:text-gray-400={item.done}>{item.text}</span>
+                  </label>
                   <button
                     class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600 transition"
                     on:click={() => deleteChecklistItem(i)}
@@ -371,7 +376,7 @@
             {/each}
           </ul>
 
-          <div class="flex gap-2">
+          <div class="flex gap-2 mt-3">
             <input
               class="flex-1 px-3 py-1.5 border border-[#e6e6e6] rounded-lg text-sm text-gray-900 outline-none focus:border-gray-900"
               bind:value={newChecklistItem}

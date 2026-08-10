@@ -2,6 +2,7 @@
   import { link } from 'svelte-spa-router';
   import { tick } from 'svelte';
   import Column from './Column.svelte';
+  import Loading from './Loading.svelte';
   import WorkspaceSidebar from './WorkspaceSidebar.svelte';
 
   export let params = {};
@@ -193,7 +194,7 @@
           <button class="secondary" on:click={() => loadBoard(boardId)}>Retry</button>
         </div>
       {:else if loading}
-        <p class="boards-empty">Loading board…</p>
+        <Loading label="Loading board…" />
       {:else}
         {#if columns.length === 0}
           <p class="boards-empty mb-4">No lists yet. Add a list to get started.</p>

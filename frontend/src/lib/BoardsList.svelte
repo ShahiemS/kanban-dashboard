@@ -3,6 +3,7 @@
   import { push } from 'svelte-spa-router';
   import { Star, DotsThree } from 'phosphor-svelte';
   import WorkspaceSidebar from './WorkspaceSidebar.svelte';
+  import Loading from './Loading.svelte';
   import { workspaces } from './workspaceStore.js';
 
   export let api;
@@ -244,7 +245,7 @@
           <button class="secondary" on:click={loadBoards}>Retry</button>
         </div>
       {:else if loading}
-        <p class="boards-empty">Loading boards…</p>
+        <Loading label="Loading boards…" />
       {:else if showArchived && boards.length === 0}
         <p class="boards-empty">No archived boards.</p>
       {:else}
