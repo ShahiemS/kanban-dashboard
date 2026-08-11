@@ -160,12 +160,25 @@ app.post('/api/columns', async (req, res) => {
 // Cards
 app.get('/api/cards', async (req, res) => {
   const { board_id } = req.query;
+  if (!board_id) {
+    return res.status(400).json({ error: 'board_id is required' });
+  }
+  const archived = req.query.archived || 'false';
+  let filter = '';
+  const params = [board_id];
+  if (archived === 'true') {
+    filter = 'AND cards.archived = true';
+  } else if (archived === 'false') {
+    filter = 'AND cards.archived = false';
+  } else if (archived !== 'all') {
+    return res.status(400).json({ error: 'archived must be true, false, or all' });
+  }
   const { rows } = await pool.query(
     `SELECT cards.* FROM cards
      JOIN columns ON cards.column_id = columns.id
-     WHERE columns.board_id = $1 AND cards.archived = false
+     WHERE columns.board_id = $1 ${filter}
      ORDER BY cards.position`,
-    [board_id]
+    params
   );
   res.json(rows);
 });
@@ -181,11 +194,22 @@ app.post('/api/cards', async (req, res) => {
 
 app.put('/api/cards/:id', async (req, res) => {
   const { id } = req.params;
-  const { title, description, column_id, position, meta } = req.body;
+  const { rows: existingRows } = await pool.query('SELECT * FROM cards WHERE id = $1', [id]);
+  if (!existingRows[0]) return res.status(404).json({ error: 'Card not found' });
+  const existing = existingRows[0];
+  const {
+    title = existing.title,
+    description = existing.description,
+    column_id = existing.column_id,
+    position = existing.position,
+    meta = existing.meta,
+    archived = existing.archived,
+    completed = existing.completed
+  } = req.body;
   const { rows } = await pool.query(
-    `UPDATE cards SET title = $1, description = $2, column_id = $3, position = $4, meta = $5
-     WHERE id = $6 RETURNING *`,
-    [title, description, column_id, position, JSON.stringify(meta || {}), id]
+    `UPDATE cards SET title = $1, description = $2, column_id = $3, position = $4, meta = $5, archived = $6, completed = $7
+     WHERE id = $8 RETURNING *`,
+    [title, description, column_id, position, JSON.stringify(meta || {}), archived, completed, id]
   );
   res.json(rows[0]);
 });

@@ -24,6 +24,7 @@
 
   let showAddColumn = false;
   let columnInput = null;
+  let showArchived = false;
 
   async function loadBoard(id) {
     if (!id) return;
@@ -31,10 +32,11 @@
     error = '';
     try {
       console.debug('[BoardView] fetching board', id, 'api base:', api);
+      const archivedParam = showArchived ? 'all' : 'false';
       const [boardRes, colsRes, cardsRes] = await Promise.all([
         fetch(`${api}/api/boards/${id}`),
         fetch(`${api}/api/columns?board_id=${id}`),
-        fetch(`${api}/api/cards?board_id=${id}`)
+        fetch(`${api}/api/cards?board_id=${id}&archived=${archivedParam}`)
       ]);
       console.debug('[BoardView] responses', boardRes.status, colsRes.status, cardsRes.status);
       if (!boardRes.ok) throw new Error(`Board request failed (${boardRes.status})`);
@@ -52,6 +54,11 @@
   }
 
   $: loadBoard(boardId);
+
+  function toggleArchivedView() {
+    showArchived = !showArchived;
+    loadBoard(boardId);
+  }
 
   function startEditTitle() {
     if (!board) return;
@@ -114,7 +121,13 @@
     const updatedCard = event.detail;
     if (updatedCard.deleted) {
       cards = cards.filter(c => c.id !== updatedCard.id);
-    } else if (cards.find(c => c.id === updatedCard.id)) {
+      return;
+    }
+    if (!showArchived && updatedCard.archived) {
+      cards = cards.filter(c => c.id !== updatedCard.id);
+      return;
+    }
+    if (cards.find(c => c.id === updatedCard.id)) {
       cards = cards.map(c => c.id === updatedCard.id ? updatedCard : c);
     } else {
       cards = [...cards, updatedCard];
@@ -123,7 +136,11 @@
 
   function handleArchiveAll(event) {
     const { column_id } = event.detail;
-    cards = cards.filter(c => c.column_id !== column_id);
+    if (showArchived) {
+      cards = cards.map(c => c.column_id === column_id ? { ...c, archived: true } : c);
+    } else {
+      cards = cards.filter(c => c.column_id !== column_id);
+    }
   }
 
   function handleColumnRenamed(event) {
@@ -182,6 +199,11 @@
         {/if}
       </nav>
 
+      <div class="board-controls">
+        <button class="archived-toggle" on:click={toggleArchivedView}>
+          {showArchived ? 'Hide archived cards' : 'Show archived cards'}
+        </button>
+      </div>
     </header>
 
     <div class="flex-1 overflow-auto">

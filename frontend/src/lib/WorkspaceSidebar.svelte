@@ -317,7 +317,13 @@
       {/if}
     </button>
     {#if showUserMenu}
-      <div class="absolute left-full bottom-0 ml-2 w-44 p-2 bg-white border border-[#e6e6e6] rounded-[10px] shadow-[0_6px_16px_rgba(0,0,0,0.06)] z-50 max-h-[80vh] overflow-y-auto">
+      <div
+        class="absolute left-full bottom-0 ml-2 w-80 p-4 bg-white border border-[#e6e6e6] rounded-[10px] shadow-[0_6px_16px_rgba(0,0,0,0.06)] z-50 max-h-[80vh] overflow-y-auto overflow-x-hidden"
+        role="group"
+        aria-label="User menu"
+        on:click|stopPropagation
+        on:keydown={(e) => { if (e.key === 'Escape') closeMenu(); }}
+      >
         <label class="block text-xs text-gray-500 mb-1" for="user-name">Name</label>
         <input
           id="user-name"
