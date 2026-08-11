@@ -206,8 +206,17 @@ button.logout:hover {
 }
 
 .column {
-  @apply flex flex-col w-[292px] min-w-[292px] max-h-full p-[0.6rem] bg-[var(--surface)] border border-solid border-[var(--border)] rounded-xl;
+  @apply flex flex-col max-h-full p-[0.6rem] bg-[var(--surface)] border border-solid border-[var(--border)] rounded-xl;
+  width: 292px;
+  min-width: 292px;
   transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+@media (max-width: 640px) {
+  .column {
+    width: 85vw;
+    min-width: 85vw;
+  }
 }
 
 .column-header {

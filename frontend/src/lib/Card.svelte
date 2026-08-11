@@ -7,7 +7,7 @@
   import { createEventDispatcher, tick } from 'svelte';
   import { get } from 'svelte/store';
   import { fly } from 'svelte/transition';
-  import { DotsThree, Link, X, Check, Article, TextB, TextItalic, TextUnderline, ListBullets } from 'phosphor-svelte';
+  import { DotsThree, Link, X, Check, Article, TextB, TextH, TextItalic, TextUnderline, ListBullets, ListNumbers } from 'phosphor-svelte';
 
   export let card;
   export let api;
@@ -19,6 +19,8 @@
   let detailDescription = '';
   let checklist = [];
   let newChecklistItem = '';
+  let editingItemIndex = -1;
+  let editItemText = '';
   let showCompleted = true;
   let editingTitle = false;
   let editTitle = card.title;
@@ -171,6 +173,26 @@
 
   function toggleChecklistItem(index) {
     checklist = checklist.map((item, i) => i === index ? { ...item, done: !item.done } : item);
+  }
+
+  function startEditChecklistItem(index) {
+    editingItemIndex = index;
+    editItemText = checklist[index].text;
+  }
+
+  function saveChecklistItem(index) {
+    if (editingItemIndex !== index) return;
+    const next = editItemText.trim();
+    editingItemIndex = -1;
+    if (next) {
+      checklist = checklist.map((item, i) => i === index ? { ...item, text: next } : item);
+    }
+    editItemText = '';
+  }
+
+  function cancelEditChecklistItem() {
+    editingItemIndex = -1;
+    editItemText = '';
   }
 
   function deleteDetail() {
@@ -362,11 +384,13 @@
 
         <div class="flex flex-col gap-1.5">
           <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide" for="card-detail-desc">Description</label>
-          <div class="flex gap-1">
-            <button type="button" class="text-xs px-2 py-1" on:click={() => document.execCommand('bold')}><TextB size={14} weight="bold" /></button>
-            <button type="button" class="text-xs px-2 py-1" on:click={() => document.execCommand('italic')}><TextItalic size={14} weight="bold" /></button>
-            <button type="button" class="text-xs px-2 py-1" on:click={() => document.execCommand('underline')}><TextUnderline size={14} weight="bold" /></button>
-            <button type="button" class="text-xs px-2 py-1" on:click={() => document.execCommand('insertUnorderedList')}><ListBullets size={14} weight="bold" /></button>
+          <div class="flex flex-wrap gap-1">
+            <button type="button" class="text-xs px-2 py-1 bg-white border border-[#e6e6e6] text-gray-700 rounded-md hover:bg-gray-100" on:click={() => document.execCommand('bold')}><TextB size={14} weight="bold" /></button>
+            <button type="button" class="text-xs px-2 py-1 bg-white border border-[#e6e6e6] text-gray-700 rounded-md hover:bg-gray-100" on:click={() => document.execCommand('italic')}><TextItalic size={14} weight="bold" /></button>
+            <button type="button" class="text-xs px-2 py-1 bg-white border border-[#e6e6e6] text-gray-700 rounded-md hover:bg-gray-100" on:click={() => document.execCommand('underline')}><TextUnderline size={14} weight="bold" /></button>
+            <button type="button" class="text-xs px-2 py-1 bg-white border border-[#e6e6e6] text-gray-700 rounded-md hover:bg-gray-100" on:click={() => document.execCommand('formatBlock', false, 'h2')}><TextH size={14} weight="bold" /></button>
+            <button type="button" class="text-xs px-2 py-1 bg-white border border-[#e6e6e6] text-gray-700 rounded-md hover:bg-gray-100" on:click={() => document.execCommand('insertUnorderedList')}><ListBullets size={14} weight="bold" /></button>
+            <button type="button" class="text-xs px-2 py-1 bg-white border border-[#e6e6e6] text-gray-700 rounded-md hover:bg-gray-100" on:click={() => document.execCommand('insertOrderedList')}><ListNumbers size={14} weight="bold" /></button>
           </div>
           <div
             id="card-detail-desc"
@@ -401,7 +425,7 @@
             {#each checklist as item, i}
               {#if showCompleted || !item.done}
                 <li class="flex items-center gap-2 group">
-                  <label class="flex items-center gap-2 flex-1 cursor-pointer">
+                  <label class="flex items-center gap-2 cursor-pointer shrink-0">
                     <input
                       type="checkbox"
                       class="sr-only"
@@ -411,10 +435,28 @@
                     <span class="w-5 h-5 rounded border flex items-center justify-center transition {item.done ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white border-gray-300 text-transparent'}">
                       {#if item.done}<Check size={12} weight="bold" />{/if}
                     </span>
-                    <span class="text-sm text-gray-800 flex-1 select-none" class:line-through={item.done} class:text-gray-400={item.done}>{item.text}</span>
                   </label>
+                  {#if editingItemIndex === i}
+                    <input
+                      class="flex-1 px-2 py-1 border border-[#e6e6e6] rounded text-sm text-gray-900 outline-none focus:border-gray-900"
+                      bind:value={editItemText}
+                      on:keydown={(e) => {
+                        if (e.key === 'Enter') saveChecklistItem(i);
+                        if (e.key === 'Escape') cancelEditChecklistItem();
+                      }}
+                      on:blur={() => saveChecklistItem(i)}
+                    />
+                  {:else}
+                    <span
+                      class="flex-1 text-sm text-gray-800 select-none {item.done ? 'line-through text-gray-400' : ''} hover:underline cursor-pointer"
+                      role="button"
+                      tabindex="0"
+                      on:click={() => startEditChecklistItem(i)}
+                      on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && startEditChecklistItem(i)}
+                    >{item.text}</span>
+                  {/if}
                   <button
-                    class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600 transition"
+                    class="opacity-100 md:opacity-0 md:group-hover:opacity-100 text-gray-400 hover:text-red-600 transition"
                     on:click={() => deleteChecklistItem(i)}
                     aria-label="Delete item"
                   >

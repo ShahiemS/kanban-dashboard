@@ -3,7 +3,6 @@
   import { push } from 'svelte-spa-router';
 
   export let api;
-  export let onLogout;
 
   let workspaces = [];
   let newWorkspaceTitle = '';
@@ -112,9 +111,6 @@
 
 <header class="app-header">
   <h1>Workspaces</h1>
-  <div class="board-controls">
-    <button class="logout" on:click={onLogout}>Log out</button>
-  </div>
 </header>
 
 {#if error}

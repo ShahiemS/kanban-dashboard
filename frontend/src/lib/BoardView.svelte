@@ -155,7 +155,7 @@
 </script>
 
 <div class="flex h-screen">
-  <WorkspaceSidebar api={api} activeWorkspaceId={board?.workspace_id || null} />
+  <WorkspaceSidebar api={api} activeWorkspaceId={board?.workspace_id || null} onLogout={onLogout} />
 
   <div class="flex-1 flex flex-col min-w-0 pt-6">
     <header class="app-header px-6">
@@ -182,9 +182,6 @@
         {/if}
       </nav>
 
-      <div class="board-controls">
-        <button class="logout" on:click={onLogout}>Log out</button>
-      </div>
     </header>
 
     <div class="flex-1 overflow-auto">

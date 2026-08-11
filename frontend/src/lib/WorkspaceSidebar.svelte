@@ -6,11 +6,19 @@
 
   export let api;
   export let activeWorkspaceId = null;
+  export let onLogout = () => {};
 
   let loading = true;
   let error = '';
   let openMenuId = null;
+  let showUserMenu = false;
   let editingWorkspaceId = null;
+  let avatarSeed = 'User';
+  let userName = 'User';
+
+  const AVATAR_STORAGE_KEY = 'kanban.user.avatarSeed';
+  const AVATAR_OPTIONS = ['Felix', 'Aneka', 'Casper', 'Mia', 'Leo', 'Zoe', 'Mila', 'Noah'];
+  const USERNAME_KEY = 'kanban.user.name';
   let editTitle = '';
   let addingWorkspace = false;
   let newWorkspaceTitle = '';
@@ -32,10 +40,32 @@
   onMount(() => {
     if (typeof localStorage !== 'undefined') {
       const saved = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
-      if (saved !== null) collapsed = saved === 'true';
+      if (saved !== null) {
+        collapsed = saved === 'true';
+      } else if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        collapsed = true;
+      }
+      const savedAvatar = localStorage.getItem(AVATAR_STORAGE_KEY);
+      if (savedAvatar) avatarSeed = savedAvatar;
+      const savedName = localStorage.getItem(USERNAME_KEY);
+      if (savedName) userName = savedName;
     }
     loadWorkspaces();
   });
+
+  function saveUserName() {
+    userName = userName.trim() || 'User';
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(USERNAME_KEY, userName);
+    }
+  }
+
+  function setAvatarSeed(seed) {
+    avatarSeed = seed;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(AVATAR_STORAGE_KEY, seed);
+    }
+  }
 
   async function loadWorkspaces() {
     loading = true;
@@ -138,6 +168,11 @@
 
   function closeMenu() {
     openMenuId = null;
+    showUserMenu = false;
+  }
+
+  function toggleUserMenu() {
+    showUserMenu = !showUserMenu;
   }
 </script>
 
@@ -157,7 +192,7 @@
         on:click={toggleSidebar}
         aria-label="Close sidebar"
       >
-        <CaretLeft size={14} weight="bold" />
+        <CaretLeft size={24} weight="bold" />
       </button>
     {:else}
       <button
@@ -165,7 +200,7 @@
         on:click={toggleSidebar}
         aria-label="Open sidebar"
       >
-        <List size={14} weight="bold" />
+        <List size={24} weight="bold" />
       </button>
     {/if}
   </div>
@@ -265,4 +300,51 @@
     {/if}
   </div>
 {/if}
+
+  <div class="relative p-3 border-t border-[#e6e6e6] mt-auto">
+    <button
+      class="w-full flex items-center {collapsed ? 'justify-center' : 'gap-2'} p-0 bg-transparent border-none text-gray-900"
+      on:click|stopPropagation={toggleUserMenu}
+      aria-label="User menu"
+    >
+      <img
+        class="w-10 h-10 rounded-full bg-gray-100 shrink-0"
+        src={`https://api.dicebear.com/7.x/lorelei/svg?seed=${avatarSeed}`}
+        alt="Avatar"
+      />
+      {#if !collapsed}
+        <span class="text-sm font-medium truncate flex-1 text-left">{userName}</span>
+      {/if}
+    </button>
+    {#if showUserMenu}
+      <div class="absolute left-full bottom-0 ml-2 w-44 p-2 bg-white border border-[#e6e6e6] rounded-[10px] shadow-[0_6px_16px_rgba(0,0,0,0.06)] z-50 max-h-[80vh] overflow-y-auto">
+        <label class="block text-xs text-gray-500 mb-1" for="user-name">Name</label>
+        <input
+          id="user-name"
+          class="w-full mb-2 px-2 py-1.5 text-sm border border-[#e6e6e6] rounded-lg bg-white text-gray-900 outline-none focus:border-gray-900"
+          bind:value={userName}
+          placeholder="Your name"
+          on:blur={saveUserName}
+          on:keydown={(e) => { if (e.key === 'Enter') saveUserName(); }}
+        />
+        <p class="text-xs text-gray-500 mb-1.5">Choose avatar</p>
+        <div class="flex gap-1 mb-2">
+          {#each AVATAR_OPTIONS as seed}
+            <button
+              class="p-0 border-none bg-transparent rounded-full"
+              on:click|stopPropagation={() => setAvatarSeed(seed)}
+              aria-label={`Choose avatar ${seed}`}
+            >
+              <img
+                class="w-8 h-8 rounded-full border-2 {avatarSeed === seed ? 'border-gray-900' : 'border-transparent'} hover:border-gray-400"
+                src={`https://api.dicebear.com/7.x/lorelei/svg?seed=${seed}`}
+                alt={seed}
+              />
+            </button>
+          {/each}
+        </div>
+        <button class="block w-full rounded-md border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-gray-900 hover:bg-gray-100" on:click|stopPropagation={onLogout}>Log out</button>
+      </div>
+    {/if}
+  </div>
 </div>

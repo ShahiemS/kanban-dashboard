@@ -218,7 +218,7 @@
 />
 
 <div class="flex h-screen">
-  <WorkspaceSidebar api={api} activeWorkspaceId={workspaceId ? parseInt(workspaceId, 10) : null} />
+  <WorkspaceSidebar api={api} activeWorkspaceId={workspaceId ? parseInt(workspaceId, 10) : null} onLogout={onLogout} />
 
   <div class="flex-1 flex flex-col min-w-0 p-6">
     <header class="app-header">
@@ -257,7 +257,6 @@
         <button class="archived-toggle" on:click={toggleArchivedView}>
           {showArchived ? 'Back to boards' : 'View archived boards'}
         </button>
-        <button class="logout" on:click={onLogout}>Log out</button>
       </div>
     </header>
 
