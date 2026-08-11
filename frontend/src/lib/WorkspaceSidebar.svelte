@@ -18,13 +18,24 @@
   let collapsed = false;
   let workspaceBoards = {};
 
+  const SIDEBAR_COLLAPSED_KEY = 'kanban.sidebar.collapsed';
+
   $: if (activeWorkspaceId) loadWorkspaceBoards(activeWorkspaceId);
 
   function toggleSidebar() {
     collapsed = !collapsed;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+    }
   }
 
-  onMount(loadWorkspaces);
+  onMount(() => {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+      if (saved !== null) collapsed = saved === 'true';
+    }
+    loadWorkspaces();
+  });
 
   async function loadWorkspaces() {
     loading = true;

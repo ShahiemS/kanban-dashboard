@@ -202,7 +202,7 @@ button.logout:hover {
 /* ---------- Board / columns ---------- */
 
 .board {
-  @apply flex items-start gap-[0.85rem] overflow-x-auto h-full;
+  @apply flex items-start gap-[0.85rem] overflow-x-auto h-full pl-6;
 }
 
 .column {
@@ -393,4 +393,14 @@ button.logout:hover {
 
 ::-webkit-scrollbar-track {
   @apply bg-transparent;
+}
+
+/* Prevent mobile zoom on input focus */
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select,
+  [contenteditable="true"] {
+    font-size: 16px !important;
+  }
 }

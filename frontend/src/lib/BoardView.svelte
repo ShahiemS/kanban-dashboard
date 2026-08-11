@@ -197,7 +197,7 @@
         <Loading label="Loading board…" />
       {:else}
         {#if columns.length === 0}
-          <p class="boards-empty mb-4">No lists yet. Add a list to get started.</p>
+          <p class="boards-empty mb-4 pl-6">No lists yet. Add a list to get started.</p>
         {/if}
 
         <div class="board">

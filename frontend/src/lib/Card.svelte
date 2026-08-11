@@ -190,7 +190,7 @@
 />
 
 <div
-  class="group relative bg-white rounded-[10px] border border-[#e6e6e6] p-2 mb-2 active:cursor-grabbing transition-colors hover:border-[#d4d4d4] hover:bg-[#fafafa]"
+  class="group relative bg-white rounded-[10px] border border-[#e6e6e6] px-4 py-2 mb-2 active:cursor-grabbing transition-colors hover:border-[#d4d4d4] hover:bg-[#fafafa]"
   draggable={!editingTitle}
   on:dragstart={onDragStart}
   on:click={openDetail}
