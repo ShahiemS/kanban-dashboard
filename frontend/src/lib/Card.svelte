@@ -4,10 +4,10 @@
 </script>
 
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, tick } from 'svelte';
   import { get } from 'svelte/store';
   import { fly } from 'svelte/transition';
-  import { DotsThree, Link, X, Check } from 'phosphor-svelte';
+  import { DotsThree, Link, X, Check, Article, TextB, TextItalic, TextUnderline, ListBullets } from 'phosphor-svelte';
 
   export let card;
   export let api;
@@ -20,6 +20,9 @@
   let checklist = [];
   let newChecklistItem = '';
   let showCompleted = true;
+  let editingTitle = false;
+  let editTitle = card.title;
+  let titleInput = null;
 
   $: meta = card.meta || {};
   $: coverImage = meta.cover_image || '';
@@ -65,14 +68,26 @@
 
   async function renameCard() {
     closeMenus();
-    const newTitle = prompt('Rename card', card.title);
-    if (!newTitle || !newTitle.trim() || newTitle.trim() === card.title) return;
+    editingTitle = true;
+    editTitle = card.title;
+    await tick();
+    titleInput?.focus();
+  }
+
+  async function saveRename() {
+    if (!editingTitle) return;
+    const newTitle = editTitle.trim();
+    editingTitle = false;
+    if (!newTitle || newTitle === card.title) {
+      editTitle = card.title;
+      return;
+    }
     try {
       const res = await fetch(`${api}/api/cards/${card.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: newTitle.trim(),
+          title: newTitle,
           description: card.description,
           column_id: card.column_id,
           position: card.position,
@@ -80,10 +95,15 @@
         })
       });
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
-      dispatch('cardMoved', { ...card, title: newTitle.trim() });
+      dispatch('cardMoved', { ...card, title: newTitle });
     } catch (err) {
       console.error('[Card] rename failed', err);
     }
+  }
+
+  function cancelRename() {
+    editingTitle = false;
+    editTitle = card.title;
   }
 
   async function deleteCard() {
@@ -107,6 +127,7 @@
   }
 
   function openDetail() {
+    if (editingTitle) return;
     closeMenus();
     detailOpen = true;
     detailTitle = card.title;
@@ -169,8 +190,8 @@
 />
 
 <div
-  class="group relative bg-white rounded-[10px] border border-[#e6e6e6] p-2 mb-2 cursor-grab active:cursor-grabbing transition-colors hover:border-[#d4d4d4] hover:bg-[#fafafa]"
-  draggable="true"
+  class="group relative bg-white rounded-[10px] border border-[#e6e6e6] p-2 mb-2 active:cursor-grabbing transition-colors hover:border-[#d4d4d4] hover:bg-[#fafafa]"
+  draggable={!editingTitle}
   on:dragstart={onDragStart}
   on:click={openDetail}
   on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && openDetail()}
@@ -210,9 +231,31 @@
     {/if}
   </div>
 
-  <h3 class="pr-6 text-sm font-semibold text-gray-900 leading-snug">{card.title}</h3>
+  {#if editingTitle}
+    <input
+      bind:this={titleInput}
+      type="text"
+      class="w-full pr-6 mb-1 text-sm font-semibold text-gray-900 leading-snug border border-[#e6e6e6] rounded px-1 py-0.5 outline-none focus:border-gray-900"
+      bind:value={editTitle}
+      on:click={(e) => e.stopPropagation()}
+      on:mousedown={(e) => e.stopPropagation()}
+      on:keydown={(e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') saveRename();
+        if (e.key === 'Escape') cancelRename();
+      }}
+    />
+    <div class="flex gap-1 mt-1">
+      <button class="text-xs px-2 py-1" on:click|stopPropagation={saveRename} on:keydown={(e) => e.stopPropagation()}>Save</button>
+      <button class="text-xs px-2 py-1 secondary" on:click|stopPropagation={cancelRename} on:keydown={(e) => e.stopPropagation()}>Cancel</button>
+    </div>
+  {:else}
+    <h3 class="pr-6 text-sm font-semibold text-gray-900 leading-snug">{card.title}</h3>
+  {/if}
   {#if card.description}
-    <p class="mt-1 text-xs text-gray-500 leading-relaxed">{card.description}</p>
+    <div class="mt-2 text-gray-500" aria-hidden="true">
+      <Article size={14} />
+    </div>
   {/if}
 
   {#if coverImage}
@@ -319,11 +362,17 @@
 
         <div class="flex flex-col gap-1.5">
           <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide" for="card-detail-desc">Description</label>
-          <textarea
+          <div class="flex gap-1">
+            <button type="button" class="text-xs px-2 py-1" on:click={() => document.execCommand('bold')}><TextB size={14} weight="bold" /></button>
+            <button type="button" class="text-xs px-2 py-1" on:click={() => document.execCommand('italic')}><TextItalic size={14} weight="bold" /></button>
+            <button type="button" class="text-xs px-2 py-1" on:click={() => document.execCommand('underline')}><TextUnderline size={14} weight="bold" /></button>
+            <button type="button" class="text-xs px-2 py-1" on:click={() => document.execCommand('insertUnorderedList')}><ListBullets size={14} weight="bold" /></button>
+          </div>
+          <div
             id="card-detail-desc"
-            class="w-full px-3 py-2 border border-[#e6e6e6] rounded-lg bg-white text-sm text-gray-700 outline-none focus:border-gray-900 resize-none"
-            bind:value={detailDescription}
-            rows="4"
+            contenteditable="true"
+            class="w-full min-h-[120px] px-3 py-2 border border-[#e6e6e6] rounded-lg bg-white text-sm text-gray-700 outline-none focus:border-gray-900"
+            bind:innerHTML={detailDescription}
           />
         </div>
 

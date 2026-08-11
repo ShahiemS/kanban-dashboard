@@ -157,8 +157,8 @@
 <div class="flex h-screen">
   <WorkspaceSidebar api={api} activeWorkspaceId={board?.workspace_id || null} />
 
-  <div class="flex-1 flex flex-col min-w-0 p-6">
-    <header class="app-header">
+  <div class="flex-1 flex flex-col min-w-0 pt-6">
+    <header class="app-header px-6">
       <nav class="breadcrumb">
         <a href={`/workspace/${board?.workspace_id || ''}`} use:link class="breadcrumb-link">Boards</a>
         <span class="breadcrumb-sep">/</span>

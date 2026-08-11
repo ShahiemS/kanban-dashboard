@@ -1,5 +1,5 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, tick } from 'svelte';
   import { DotsThree, Plus } from 'phosphor-svelte';
   import Card from './Card.svelte';
   import Modal from './Modal.svelte';
@@ -19,6 +19,7 @@
   let editingTitle = false;
   let editTitle = column.title;
   let menuOpen = false;
+  let titleInput = null;
 
   function toggleMenu() {
     menuOpen = !menuOpen;
@@ -50,6 +51,7 @@
     if (addAnother) {
       justAdded = true;
       setTimeout(() => { justAdded = false; }, 1500);
+      tick().then(() => titleInput?.focus());
     } else {
       showAdd = false;
     }
@@ -59,6 +61,12 @@
     showAdd = false;
     newTitle = '';
     newDesc = '';
+  }
+
+  async function openAddCard() {
+    showAdd = true;
+    await tick();
+    titleInput?.focus();
   }
 
   function onDragOver(e) {
@@ -183,7 +191,7 @@
     {/each}
   </div>
 
-  <button class="add-card-trigger" on:click={() => showAdd = true}>
+  <button class="add-card-trigger" on:click={openAddCard}>
     <Plus size={14} />
     Add card
   </button>
@@ -193,7 +201,7 @@
   <Modal title="Add card to {column.title}" on:close={closeAddCard}>
     <div class="add-card-form">
       <label class="add-card-label" for="add-card-title">Title</label>
-      <input id="add-card-title" bind:value={newTitle} placeholder="e.g. Design the login page" on:keydown={(e) => e.key === 'Enter' && addCard()} />
+      <input bind:this={titleInput} id="add-card-title" bind:value={newTitle} placeholder="e.g. Design the login page" on:keydown={(e) => e.key === 'Enter' && addCard()} />
 
       <label class="add-card-label" for="add-card-desc">Description</label>
       <textarea id="add-card-desc" bind:value={newDesc} placeholder="Optional description" rows="3" />
