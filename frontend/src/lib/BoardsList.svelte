@@ -35,6 +35,7 @@
   let contextMenu = null;
   let userName = 'User';
   let avatarSeed = 'User';
+  let greeting = 'Hello';
 
   onMount(() => {
     if (typeof localStorage !== 'undefined') {
@@ -43,6 +44,11 @@
       const savedAvatar = localStorage.getItem('kanban.user.avatarSeed');
       if (savedAvatar) avatarSeed = savedAvatar;
     }
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) greeting = 'Good morning';
+    else if (hour >= 12 && hour < 18) greeting = 'Good afternoon';
+    else if (hour >= 18 && hour < 23) greeting = 'Good evening';
+    else greeting = 'Good night';
   });
 
   $: if (workspaceId) loadBoards();
@@ -229,7 +235,7 @@
 />
 
 <div class="flex h-screen">
-  <WorkspaceSidebar api={api} activeWorkspaceId={workspaceId ? parseInt(workspaceId, 10) : null} onLogout={onLogout} />
+  <WorkspaceSidebar api={api} activeWorkspaceId={workspaceId ? parseInt(workspaceId, 10) : null} onLogout={onLogout} on:profileChanged={(e) => { userName = e.detail.userName; avatarSeed = e.detail.avatarSeed; }} />
 
   <div class="flex-1 flex flex-col min-w-0 p-6">
     <header class="app-header">
@@ -276,13 +282,26 @@
         <div class="flex h-full items-center justify-center">
           <div class="flex flex-col items-center gap-3 text-center">
             <img
-              class="w-12 h-12 rounded-full bg-gray-100"
-              src={`https://api.dicebear.com/7.x/lorelei/svg?seed=${avatarSeed}`}
+              class="w-20 h-20 rounded-full bg-gray-100"
+              src={avatarSeed.startsWith('http') ? avatarSeed : `https://api.dicebear.com/7.x/lorelei/svg?seed=${avatarSeed}`}
               alt="Avatar"
             />
-            <div>
-              <p class="text-lg font-semibold text-gray-900">Hi, {userName}</p>
+            <div class="space-y-2">
+              <p class="text-lg font-semibold text-gray-900">{greeting}, {userName}</p>
               <p class="text-gray-500 text-sm">Select a workspace from the sidebar to view its boards.</p>
+              {#if $workspaces.length > 0}
+                <div class="flex flex-wrap justify-center gap-2 pt-2">
+                  {#each $workspaces as w}
+                    <a
+                      use:link
+                      href={`/workspace/${w.id}`}
+                      class="max-w-[150px] truncate px-3 py-1.5 text-sm text-gray-700 bg-white border border-[#e6e6e6] rounded-lg hover:bg-gray-50 hover:text-gray-900 no-underline"
+                    >
+                      {w.title}
+                    </a>
+                  {/each}
+                </div>
+              {/if}
             </div>
           </div>
         </div>

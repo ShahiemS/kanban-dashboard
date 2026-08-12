@@ -30,6 +30,11 @@
   let editTitle = card.title;
   let titleInput = null;
   let showUnsavedConfirm = false;
+  let detailTags = [];
+  let newTagLabel = '';
+  let newTagColor = '#0079bf';
+
+  const TAG_COLORS = ['#0079bf', '#61bd4f', '#f2d600', '#ff9f1a', '#eb5a46', '#c377e0', '#00c2e0', '#344563'];
 
   $: meta = card.meta || {};
   $: coverImage = meta.cover_image || '';
@@ -162,13 +167,16 @@
     detailDescription = card.description || '';
     const existing = Array.isArray(meta.checklists) ? meta.checklists : (Array.isArray(meta.subtasks) ? [{ title: 'Checklist', items: meta.subtasks }] : []);
     checklists = existing.map(list => ({ ...list, items: Array.isArray(list.items) ? list.items : [] }));
+    detailTags = Array.isArray(meta.tags) ? meta.tags : (meta.tag ? [{ label: meta.tag, color: meta.tag_color || '#0079bf' }] : []);
     newChecklistTitle = '';
     newChecklistItem = '';
+    newTagLabel = '';
+    newTagColor = '#0079bf';
     showCompleted = true;
   }
 
   async function saveDetail() {
-    const nextMeta = { ...meta, checklists: checklists.map(list => ({ title: list.title, items: list.items.map(i => ({ text: i.text, done: i.done })) })) };
+    const nextMeta = { ...meta, checklists: checklists.map(list => ({ title: list.title, items: list.items.map(i => ({ text: i.text, done: i.done })) })), tags: detailTags };
     try {
       await saveCard({ title: detailTitle, description: detailDescription, meta: nextMeta });
       detailOpen = false;
@@ -246,6 +254,16 @@
     editItemText = '';
   }
 
+  function addTag() {
+    if (!newTagLabel.trim()) return;
+    detailTags = [...detailTags, { label: newTagLabel.trim(), color: newTagColor }];
+    newTagLabel = '';
+  }
+
+  function deleteTag(index) {
+    detailTags = detailTags.filter((_, i) => i !== index);
+  }
+
   function closeDetail() {
     if (dirty) {
       showUnsavedConfirm = true;
@@ -316,6 +334,12 @@
           on:click|stopPropagation={addLink}
         >
           Add link
+        </button>
+        <button
+          class="block w-full rounded-md border border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-gray-900 hover:bg-gray-100 hover:text-gray-900"
+          on:click|stopPropagation={openDetail}
+        >
+          Add label
         </button>
         <button
           class="block w-full rounded-md border border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-gray-900 hover:bg-gray-100 hover:text-gray-900"
@@ -670,18 +694,48 @@
           </div>
         {/if}
 
-        {#if tags.length > 0}
-          <div class="flex flex-wrap gap-1.5">
-            {#each tags as t}
-              <span
-                class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
-                style="background-color: {t.color}1a; color: {t.color}"
-              >
-                {t.label}
-              </span>
+        <div class="space-y-2">
+          <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Labels</h4>
+          {#if detailTags.length > 0}
+            <div class="flex flex-wrap gap-1.5">
+              {#each detailTags as tag, i}
+                <span
+                  class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
+                  style="background-color: {tag.color}1a; color: {tag.color}"
+                >
+                  {tag.label}
+                  <button
+                    class="text-inherit hover:text-red-600"
+                    on:click={() => deleteTag(i)}
+                    aria-label="Remove label"
+                  >
+                    <X size={10} weight="bold" />
+                  </button>
+                </span>
+              {/each}
+            </div>
+          {/if}
+          <div class="flex gap-2">
+            <input
+              class="flex-1 px-3 py-1.5 border border-[#e6e6e6] rounded-lg text-sm text-gray-900 outline-none focus:border-gray-900"
+              bind:value={newTagLabel}
+              placeholder="Label name"
+              on:keydown={(e) => e.key === 'Enter' && addTag()}
+            />
+            <button class="px-3 py-1.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800" on:click={addTag}>Add</button>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5">
+            {#each TAG_COLORS as c}
+              <button
+                type="button"
+                class="w-6 h-6 rounded-full border-2 transition {newTagColor === c ? 'border-gray-900' : 'border-transparent'}"
+                style="background-color: {c};"
+                on:click={() => newTagColor = c}
+                aria-label="Select color"
+              ></button>
             {/each}
           </div>
-        {/if}
+        </div>
       </div>
 
       <div class="flex items-center justify-between px-5 py-4 border-t border-[#e6e6e6] shrink-0">

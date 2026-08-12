@@ -1,8 +1,10 @@
 <script>
-  import { onMount, tick } from 'svelte';
+  import { onMount, tick, createEventDispatcher } from 'svelte';
   import { link } from 'svelte-spa-router';
-  import { DotsThree, CaretLeft, List, Buildings, Kanban } from 'phosphor-svelte';
+  import { DotsThree, CaretLeft, List, Buildings, Kanban, House } from 'phosphor-svelte';
   import { workspaces } from './workspaceStore.js';
+
+  const dispatch = createEventDispatcher();
 
   export let api;
   export let activeWorkspaceId = null;
@@ -17,8 +19,14 @@
   let userName = 'User';
 
   const AVATAR_STORAGE_KEY = 'kanban.user.avatarSeed';
-  const AVATAR_OPTIONS = ['Felix', 'Aneka', 'Casper', 'Mia', 'Leo', 'Zoe', 'Mila', 'Noah'];
+  const AVATAR_OPTIONS = ['Felix', 'Aneka', 'Casper', 'Mia', 'Leo', 'Zoe', 'Mila', 'Noah', 'Oliver', 'Luna', 'Jasper', 'Ava', 'Ethan', 'Liam', 'Sofia', 'Lucas', 'Isabella', 'Mason', 'Aurora', 'Jake', 'Kofi', 'Jabari', 'Malik'];
+  const MAN_WITH_BEARD_URL = 'https://api.dicebear.com/10.x/lorelei/svg?hairVariant=variant01,variant02,variant03,variant04,variant05,variant06,variant07,variant08,variant09,variant10,variant11,variant12,variant13,variant14,variant15,variant16,variant17,variant18,variant19,variant20,variant21,variant22,variant23,variant24,variant25,variant26,variant27,variant28,variant29,variant30,variant31,variant32,variant33,variant34,variant35,variant36,variant37,variant38,variant39,variant40,variant41,variant42,variant43,variant44,variant45,variant46,variant47&eyebrowsVariant=variant01,variant02,variant03,variant04,variant05,variant06,variant09,variant10,variant11,variant13&beardProbability=97&eyesVariant=variant03,variant04,variant05,variant06,variant07,variant08,variant09,variant10,variant16,variant17,variant18,variant19,variant21,variant22,variant23,variant24&seed=Felix';
+  const CUSTOM_AVATARS = { 'Man with beard': MAN_WITH_BEARD_URL };
   const USERNAME_KEY = 'kanban.user.name';
+
+  function avatarUrl(seed) {
+    return seed.startsWith('http') ? seed : `https://api.dicebear.com/7.x/lorelei/svg?seed=${seed}`;
+  }
   let editTitle = '';
   let addingWorkspace = false;
   let newWorkspaceTitle = '';
@@ -58,6 +66,7 @@
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(USERNAME_KEY, userName);
     }
+    dispatch('profileChanged', { userName, avatarSeed });
   }
 
   function setAvatarSeed(seed) {
@@ -65,6 +74,7 @@
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(AVATAR_STORAGE_KEY, seed);
     }
+    dispatch('profileChanged', { userName, avatarSeed });
   }
 
   async function loadWorkspaces() {
@@ -184,6 +194,18 @@
 />
 
 <div class="flex flex-col h-full bg-[#f8f8f8] border-r border-[#e6e6e6] transition-all duration-200 {collapsed ? 'w-12' : 'w-60'}">
+  <div class="p-2">
+    <a
+      use:link
+      href="/"
+      class="flex items-center rounded-lg text-sm font-medium text-gray-600 hover:bg-white hover:text-gray-900 transition no-underline
+        {collapsed ? 'justify-center w-8 h-8 mx-auto' : 'gap-2 px-3 py-2'}"
+    >
+      <House size={18} weight="bold" class="shrink-0" />
+      {#if !collapsed}Home{/if}
+    </a>
+  </div>
+
   <div class="p-4 pb-6 flex items-center justify-between">
     {#if !collapsed}
       <h2 class="text-base md:text-sm font-semibold text-gray-900">Workspaces</h2>
@@ -313,7 +335,7 @@
     >
       <img
         class="w-10 h-10 rounded-full bg-gray-100 shrink-0"
-        src={`https://api.dicebear.com/7.x/lorelei/svg?seed=${avatarSeed}`}
+        src={avatarUrl(avatarSeed)}
         alt="Avatar"
       />
       {#if !collapsed}
@@ -338,7 +360,7 @@
           on:keydown={(e) => { if (e.key === 'Enter') saveUserName(); }}
         />
         <p class="text-xs text-gray-500 mb-1.5">Choose avatar</p>
-        <div class="flex gap-1 mb-2">
+        <div class="flex flex-wrap gap-1 mb-2">
           {#each AVATAR_OPTIONS as seed}
             <button
               class="p-0 border-none bg-transparent rounded-full"
@@ -347,8 +369,21 @@
             >
               <img
                 class="w-8 h-8 rounded-full border-2 {avatarSeed === seed ? 'border-gray-900' : 'border-transparent'} hover:border-gray-400"
-                src={`https://api.dicebear.com/7.x/lorelei/svg?seed=${seed}`}
+                src={avatarUrl(seed)}
                 alt={seed}
+              />
+            </button>
+          {/each}
+          {#each Object.entries(CUSTOM_AVATARS) as [label, url]}
+            <button
+              class="p-0 border-none bg-transparent rounded-full"
+              on:click|stopPropagation={() => setAvatarSeed(url)}
+              aria-label={`Choose avatar ${label}`}
+            >
+              <img
+                class="w-8 h-8 rounded-full border-2 {avatarSeed === url ? 'border-gray-900' : 'border-transparent'} hover:border-gray-400"
+                src={url}
+                alt={label}
               />
             </button>
           {/each}
