@@ -7,7 +7,7 @@
   import { createEventDispatcher, tick } from 'svelte';
   import { get } from 'svelte/store';
   import { fly } from 'svelte/transition';
-  import { DotsThree, Link, X, Check, Article, TextB, TextH, TextItalic, TextUnderline, ListBullets, ListNumbers } from 'phosphor-svelte';
+  import { DotsThree, Link, X, Check, Article, TextB, TextH, TextItalic, TextUnderline, ListBullets, ListNumbers, PencilSimple } from 'phosphor-svelte';
   import Modal from './Modal.svelte';
 
   export let card;
@@ -33,6 +33,10 @@
   let detailTags = [];
   let newTagLabel = '';
   let newTagColor = '#0079bf';
+  let linkModalOpen = false;
+  let linkUrl = '';
+  let linkLabel = '';
+  let editingLinkIndex = -1;
 
   const TAG_COLORS = ['#0079bf', '#61bd4f', '#f2d600', '#ff9f1a', '#eb5a46', '#c377e0', '#00c2e0', '#344563'];
 
@@ -85,12 +89,41 @@
     }
   }
 
-  function addLink() {
+  function openAddLink() {
     closeMenus();
-    const url = prompt('Link URL (e.g. https://docs.google.com/...)');
-    if (!url || !url.trim()) return;
-    const label = prompt('Label to show', url.replace(/^https?:\/\//, '').split('/')[0]) || url;
-    saveMeta({ ...meta, links: [...links, { label: label.trim(), url: url.trim() }] });
+    editingLinkIndex = -1;
+    linkUrl = '';
+    linkLabel = '';
+    linkModalOpen = true;
+  }
+
+  function openEditLink(index) {
+    const link = links[index];
+    editingLinkIndex = index;
+    linkUrl = link.url;
+    linkLabel = link.label;
+    linkModalOpen = true;
+  }
+
+  function closeLinkModal() {
+    linkModalOpen = false;
+    linkUrl = '';
+    linkLabel = '';
+    editingLinkIndex = -1;
+  }
+
+  function saveLink() {
+    const url = linkUrl.trim();
+    const label = linkLabel.trim() || url;
+    if (!url) return;
+    const next = [...links];
+    if (editingLinkIndex >= 0) {
+      next[editingLinkIndex] = { label, url };
+    } else {
+      next.push({ label, url });
+    }
+    saveMeta({ ...meta, links: next });
+    closeLinkModal();
   }
 
   async function renameCard() {
@@ -294,6 +327,10 @@
       closeDetail();
       closeMenus();
     }
+    if (detailOpen && e.key === 's' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      saveDetail();
+    }
   }}
   on:beforeunload={(e) => {
     if (dirty) {
@@ -331,7 +368,7 @@
         </button>
         <button
           class="block w-full rounded-md border border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-gray-900 hover:bg-gray-100 hover:text-gray-900"
-          on:click|stopPropagation={addLink}
+          on:click|stopPropagation={openAddLink}
         >
           Add link
         </button>
@@ -451,7 +488,7 @@
     </button>
     <button
       class="block w-full rounded-md border border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-gray-900 hover:bg-gray-100 hover:text-gray-900"
-      on:click|stopPropagation={addLink}
+      on:click|stopPropagation={openAddLink}
     >
       Add link
     </button>
@@ -676,19 +713,28 @@
           <div class="flex flex-col gap-2">
             <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Links</h4>
             <div class="flex flex-wrap gap-3">
-              {#each links as link}
-                <a
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="inline-flex max-w-[160px] items-center gap-1 text-xs text-blue-600 hover:underline"
-                >
-                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                  </svg>
-                  <span class="truncate">{link.label}</span>
-                </a>
+              {#each links as link, i}
+                <span class="inline-flex items-center gap-1">
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex max-w-[160px] items-center gap-1 text-xs text-blue-600 hover:underline"
+                  >
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                    </svg>
+                    <span class="truncate">{link.label}</span>
+                  </a>
+                  <button
+                    class="p-0 text-gray-400 hover:text-gray-700 bg-transparent border-none"
+                    on:click={() => openEditLink(i)}
+                    aria-label="Edit link"
+                  >
+                    <PencilSimple size={12} />
+                  </button>
+                </span>
               {/each}
             </div>
           </div>
@@ -764,6 +810,37 @@
     <div class="flex gap-2 justify-end">
       <button class="secondary" on:click={cancelClose}>Keep editing</button>
       <button on:click={confirmClose}>Close without saving</button>
+    </div>
+  </Modal>
+{/if}
+
+{#if linkModalOpen}
+  <Modal title={editingLinkIndex >= 0 ? 'Edit link' : 'Add link'} on:close={closeLinkModal}>
+    <div class="space-y-3">
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide" for="link-url">URL</label>
+        <input
+          id="link-url"
+          class="w-full px-3 py-1.5 border border-[#e6e6e6] rounded-lg text-sm text-gray-900 outline-none focus:border-gray-900"
+          bind:value={linkUrl}
+          placeholder="https://example.com"
+          on:keydown={(e) => e.key === 'Enter' && saveLink()}
+        />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide" for="link-label">Label</label>
+        <input
+          id="link-label"
+          class="w-full px-3 py-1.5 border border-[#e6e6e6] rounded-lg text-sm text-gray-900 outline-none focus:border-gray-900"
+          bind:value={linkLabel}
+          placeholder="Link label"
+          on:keydown={(e) => e.key === 'Enter' && saveLink()}
+        />
+      </div>
+      <div class="flex gap-2 justify-end">
+        <button class="secondary" on:click={closeLinkModal}>Cancel</button>
+        <button on:click={saveLink}>{editingLinkIndex >= 0 ? 'Save' : 'Add'}</button>
+      </div>
     </div>
   </Modal>
 {/if}

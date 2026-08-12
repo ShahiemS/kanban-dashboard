@@ -46,6 +46,15 @@
     }
   }
 
+  function closeMobileSidebar() {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      collapsed = true;
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, 'true');
+      }
+    }
+  }
+
   onMount(() => {
     if (typeof localStorage !== 'undefined') {
       const saved = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
@@ -197,7 +206,10 @@
 <div class="flex flex-col h-full bg-[#f8f8f8] border-r border-[#e6e6e6] transition-all duration-200 {collapsed ? 'w-12' : 'w-60'}">
   <div class="p-4 pb-6 flex items-center justify-between">
     {#if !collapsed}
-      <h2 class="text-base md:text-sm font-semibold text-gray-900">Workspaces</h2>
+      <div class="flex items-center gap-2">
+        <img src="/favicon.svg" alt="Logo" class="w-6 h-6" />
+        <h2 class="text-base md:text-sm font-semibold text-gray-900">Workspaces</h2>
+      </div>
       <button
         class="!bg-transparent !border-transparent p-0 m-0 text-gray-400 hover:text-gray-900"
         on:click={toggleSidebar}
@@ -226,17 +238,18 @@
     />
   </div>
   {/if}
-  <div class="p-2 pt-0 mt-3">
+  <div class="{collapsed ? 'p-1 flex justify-center' : 'p-2 pt-0 mt-3'}">
     <a
       use:link
       href="/"
-      class="group flex items-center gap-2 px-3 py-2 rounded-lg text-base transition no-underline
+      class="group flex items-center rounded-lg text-base transition no-underline
+        {collapsed ? 'justify-center w-8 h-8 mx-auto' : 'gap-2 px-3 py-2'}
         {activeWorkspaceId === null
           ? 'bg-white text-gray-900 font-semibold shadow-sm'
           : 'text-gray-600 hover:bg-white hover:text-gray-900'}"
     >
-      <span class="shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 text-gray-500 group-hover:text-gray-700">
-        <House size={18} weight="bold" />
+      <span class="shrink-0 {collapsed ? 'w-6 h-6' : 'w-8 h-8'} rounded-full flex items-center justify-center bg-gray-100 text-gray-500 group-hover:text-gray-700">
+        <House size={collapsed ? 14 : 18} weight="bold" />
       </span>
       {#if !collapsed}<span class="truncate">Home</span>{/if}
     </a>
@@ -300,6 +313,7 @@
                     use:link
                     href={`/board/${board.id}`}
                     class="group flex items-center gap-1.5 px-2 py-1 rounded-md text-[0.95rem] text-gray-600 hover:bg-white hover:text-gray-900 no-underline transition"
+                    on:click={closeMobileSidebar}
                   >
                     <Kanban size={16} weight="bold" class="shrink-0 text-gray-400 group-hover:text-gray-600" />
                     <span class="truncate">{board.title}</span>

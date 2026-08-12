@@ -31,6 +31,7 @@
 
 <div class="login-screen">
   <form class="login-card" on:submit|preventDefault={submit}>
+    <img src="/favicon.svg" alt="Kanban Dashboard" class="w-16 h-16 mx-auto mb-4" />
     <h1>Kanban Dashboard</h1>
     <p class="login-subtitle">This is a demo. Enter the password to continue.</p>
     <input

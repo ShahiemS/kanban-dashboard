@@ -181,6 +181,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>{board ? `${board.title} | Kanban Board` : 'Kanban Board'}</title>
+</svelte:head>
+
 <div class="flex h-screen">
   <WorkspaceSidebar api={api} activeWorkspaceId={board?.workspace_id || null} onLogout={onLogout} />
 
