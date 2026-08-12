@@ -1,5 +1,5 @@
 <script>
-  import { tick } from 'svelte';
+  import { tick, onMount } from 'svelte';
   import { link, push } from 'svelte-spa-router';
   import { Star, DotsThree } from 'phosphor-svelte';
   import WorkspaceSidebar from './WorkspaceSidebar.svelte';
@@ -33,6 +33,17 @@
   let editWorkspaceTitle = '';
   let workspaceTitleInput = null;
   let contextMenu = null;
+  let userName = 'User';
+  let avatarSeed = 'User';
+
+  onMount(() => {
+    if (typeof localStorage !== 'undefined') {
+      const savedName = localStorage.getItem('kanban.user.name');
+      if (savedName) userName = savedName;
+      const savedAvatar = localStorage.getItem('kanban.user.avatarSeed');
+      if (savedAvatar) avatarSeed = savedAvatar;
+    }
+  });
 
   $: if (workspaceId) loadBoards();
 
@@ -263,7 +274,17 @@
     <div class="flex-1 overflow-auto">
       {#if !workspaceId}
         <div class="flex h-full items-center justify-center">
-          <p class="text-gray-500 text-sm">Select a workspace from the sidebar to view its boards.</p>
+          <div class="flex flex-col items-center gap-3 text-center">
+            <img
+              class="w-12 h-12 rounded-full bg-gray-100"
+              src={`https://api.dicebear.com/7.x/lorelei/svg?seed=${avatarSeed}`}
+              alt="Avatar"
+            />
+            <div>
+              <p class="text-lg font-semibold text-gray-900">Hi, {userName}</p>
+              <p class="text-gray-500 text-sm">Select a workspace from the sidebar to view its boards.</p>
+            </div>
+          </div>
         </div>
       {:else if error}
         <div class="boards-error">

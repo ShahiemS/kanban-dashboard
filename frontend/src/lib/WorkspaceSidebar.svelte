@@ -258,7 +258,7 @@
               </div>
             {/if}
             {#if activeWorkspaceId === workspace.id && workspaceBoards[workspace.id]?.length}
-              <div class="pl-4 py-1 space-y-0.5">
+              <div class="pl-4 py-1 space-y-1.5">
                 {#each workspaceBoards[workspace.id] as board}
                   <a
                     use:link

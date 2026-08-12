@@ -143,6 +143,15 @@
     }
   }
 
+  function handleArchiveCompleted(event) {
+    const { column_id } = event.detail;
+    if (showArchived) {
+      cards = cards.map(c => c.column_id === column_id && c.completed ? { ...c, archived: true } : c);
+    } else {
+      cards = cards.filter(c => !(c.column_id === column_id && c.completed));
+    }
+  }
+
   function handleColumnRenamed(event) {
     const updated = event.detail;
     columns = columns.map(c => c.id === updated.id ? updated : c);
@@ -221,7 +230,7 @@
 
         <div class="board">
           {#each columns as column (column.id)}
-            <Column {column} cards={cards.filter(c => c.column_id === column.id)} on:cardMoved={handleCardMoved} on:archiveAll={handleArchiveAll} on:columnRenamed={handleColumnRenamed} on:columnMoved={handleColumnMoved} on:columnDeleted={handleColumnDeleted} api={api} />
+            <Column {column} cards={cards.filter(c => c.column_id === column.id)} on:cardMoved={handleCardMoved} on:archiveAll={handleArchiveAll} on:archiveCompleted={handleArchiveCompleted} on:columnRenamed={handleColumnRenamed} on:columnMoved={handleColumnMoved} on:columnDeleted={handleColumnDeleted} api={api} />
           {/each}
 
           {#if showAddColumn}

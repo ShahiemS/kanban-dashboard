@@ -108,6 +108,12 @@
     dispatch('archiveAll', { column_id: column.id });
   }
 
+  async function archiveCompleted() {
+    closeMenu();
+    await fetch(`${api}/api/columns/${column.id}/archive-completed`, { method: 'PATCH' });
+    dispatch('archiveCompleted', { column_id: column.id });
+  }
+
   function startEditing() {
     closeMenu();
     editingTitle = true;
@@ -178,6 +184,7 @@
           <div class="card-menu-dropdown column-menu-dropdown">
             <button on:click={startEditing}>Rename list</button>
             <button on:click={archiveAll}>Archive all</button>
+            <button on:click={archiveCompleted}>Archive completed</button>
             <button class="danger" on:click={deleteColumn}>Delete list</button>
           </div>
         {/if}
