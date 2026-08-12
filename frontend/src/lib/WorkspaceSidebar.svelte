@@ -1,7 +1,7 @@
 <script>
   import { onMount, tick, createEventDispatcher } from 'svelte';
   import { link } from 'svelte-spa-router';
-  import { DotsThree, CaretLeft, List, Buildings, Kanban, House } from 'phosphor-svelte';
+  import { DotsThree, CaretLeft, List, Buildings, Kanban, House, X } from 'phosphor-svelte';
   import { workspaces } from './workspaceStore.js';
 
   const dispatch = createEventDispatcher();
@@ -38,6 +38,7 @@
   const SIDEBAR_COLLAPSED_KEY = 'kanban.sidebar.collapsed';
 
   $: if (activeWorkspaceId) loadWorkspaceBoards(activeWorkspaceId);
+  $: if (searchQuery) loadAllBoards();
 
   function toggleSidebar() {
     collapsed = !collapsed;
@@ -111,6 +112,14 @@
       workspaceBoards = workspaceBoards; // trigger reactivity
     } catch (err) {
       console.error('[WorkspaceSidebar] failed to load boards', err);
+    }
+  }
+
+  async function loadAllBoards() {
+    for (const ws of $workspaces) {
+      if (!workspaceBoards[ws.id]) {
+        await loadWorkspaceBoards(ws.id);
+      }
     }
   }
 
@@ -229,13 +238,22 @@
   </div>
 
   {#if !collapsed}
-  <div class="p-2 pb-0">
+  <div class="p-2 pb-0 relative">
     <input
-      type="search"
-      class="w-full px-3 py-1.5 text-sm border border-[#e6e6e6] rounded-lg bg-white outline-none focus:border-gray-900"
+      type="text"
+      class="w-full px-3 py-1.5 pr-7 text-sm border border-[#e6e6e6] rounded-lg bg-white outline-none focus:border-gray-900"
       bind:value={searchQuery}
       placeholder="Search workspaces & boards"
     />
+    {#if searchQuery}
+      <button
+        class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center p-0 bg-transparent border-none text-gray-400 hover:text-gray-700"
+        on:click={() => searchQuery = ''}
+        aria-label="Clear search"
+      >
+        <X size={14} weight="bold" />
+      </button>
+    {/if}
   </div>
   {/if}
   <div class="{collapsed ? 'p-1 flex justify-center' : 'p-2 pt-0 mt-3'}">
@@ -261,7 +279,13 @@
     {:else if error}
       <p class="px-3 py-2 text-sm text-red-600">{error}</p>
     {:else}
-      {#each $workspaces.filter(w => !searchQuery || w.title.toLowerCase().includes(searchQuery.toLowerCase())) as workspace (workspace.id)}
+      {#each $workspaces.filter(w => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        if (w.title.toLowerCase().includes(q)) return true;
+        const boards = workspaceBoards[w.id] || [];
+        return boards.some(b => b.title.toLowerCase().includes(q));
+      }) as workspace (workspace.id)}
         <div class="relative group">
           {#if editingWorkspaceId === workspace.id}
             <div class="px-2 py-1.5">
@@ -306,7 +330,7 @@
                 <button class="block w-full rounded-md border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-red-600 hover:bg-red-50" on:click={() => deleteWorkspace(workspace)}>Delete</button>
               </div>
             {/if}
-            {#if activeWorkspaceId === workspace.id && workspaceBoards[workspace.id]?.length}
+            {#if (activeWorkspaceId === workspace.id || searchQuery) && workspaceBoards[workspace.id]?.length}
               <div class="pl-4 py-1 space-y-2">
                 {#each workspaceBoards[workspace.id].filter(b => !searchQuery || b.title.toLowerCase().includes(searchQuery.toLowerCase())) as board}
                   <a

@@ -196,7 +196,7 @@
         {#if editingTitle}
           <input
             bind:this={titleInput}
-            class="min-w-[200px] bg-transparent border-b border-gray-900 p-0 text-inherit font-semibold text-[1.25rem] outline-none"
+            class="min-w-[200px] bg-transparent border-b border-gray-900 outline-none p-0 text-inherit font-semibold text-[1.25rem] outline-none"
             bind:value={editTitle}
             on:keydown={(e) => {
               if (e.key === 'Enter') renameBoardTitle();
