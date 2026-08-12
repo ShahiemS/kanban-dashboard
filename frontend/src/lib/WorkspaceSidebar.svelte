@@ -1,7 +1,7 @@
 <script>
   import { onMount, tick } from 'svelte';
   import { link } from 'svelte-spa-router';
-  import { DotsThree, CaretLeft, List } from 'phosphor-svelte';
+  import { DotsThree, CaretLeft, List, Buildings, Kanban } from 'phosphor-svelte';
   import { workspaces } from './workspaceStore.js';
 
   export let api;
@@ -186,13 +186,13 @@
 <div class="flex flex-col h-full bg-[#f8f8f8] border-r border-[#e6e6e6] transition-all duration-200 {collapsed ? 'w-12' : 'w-60'}">
   <div class="p-4 pb-6 flex items-center justify-between">
     {#if !collapsed}
-      <h2 class="text-base font-semibold text-gray-900">Workspaces</h2>
+      <h2 class="text-base md:text-sm font-semibold text-gray-900">Workspaces</h2>
       <button
         class="!bg-transparent !border-transparent p-0 m-0 text-gray-400 hover:text-gray-900"
         on:click={toggleSidebar}
         aria-label="Close sidebar"
       >
-        <CaretLeft size={24} weight="bold" />
+        <CaretLeft size={24} weight="bold" class="w-6 h-6 md:w-5 md:h-5" />
       </button>
     {:else}
       <button
@@ -200,7 +200,7 @@
         on:click={toggleSidebar}
         aria-label="Open sidebar"
       >
-        <List size={24} weight="bold" />
+        <List size={24} weight="bold" class="w-6 h-6 md:w-5 md:h-5" />
       </button>
     {/if}
   </div>
@@ -208,16 +208,16 @@
   {#if !collapsed}
   <div class="flex-1 overflow-y-auto p-2 space-y-0.5">
     {#if loading}
-      <p class="px-3 py-2 text-xs text-gray-500">Loading…</p>
+      <p class="px-3 py-2 text-sm text-gray-500">Loading…</p>
     {:else if error}
-      <p class="px-3 py-2 text-xs text-red-600">{error}</p>
+      <p class="px-3 py-2 text-sm text-red-600">{error}</p>
     {:else}
       {#each $workspaces as workspace (workspace.id)}
         <div class="relative group">
           {#if editingWorkspaceId === workspace.id}
             <div class="px-2 py-1.5">
               <input
-                class="w-full px-2 py-1 text-sm bg-transparent border-none outline-none"
+                class="w-full px-2 py-1 text-base bg-transparent border-none outline-none"
                 bind:value={editTitle}
                 on:keydown={(e) => {
                   if (e.key === 'Enter') renameWorkspace(workspace);
@@ -225,20 +225,23 @@
                 }}
               />
               <div class="flex gap-1 mt-1.5">
-                <button class="flex-1 px-2 py-1 text-xs rounded-md bg-gray-900 text-white" on:click={() => renameWorkspace(workspace)}>Save</button>
-                <button class="flex-1 px-2 py-1 text-xs rounded-md border border-[#e6e6e6] bg-white text-gray-700" on:click={cancelRename}>Cancel</button>
+                <button class="flex-1 px-2 py-1 text-sm rounded-md bg-gray-900 text-white" on:click={() => renameWorkspace(workspace)}>Save</button>
+                <button class="flex-1 px-2 py-1 text-sm rounded-md border border-[#e6e6e6] bg-white text-gray-700" on:click={cancelRename}>Cancel</button>
               </div>
             </div>
           {:else}
             <a
               use:link
               href={`/workspace/${workspace.id}`}
-              class="flex items-center px-3 py-2 rounded-lg text-sm transition no-underline
+              class="group flex items-center gap-2 px-3 py-2 rounded-lg text-base transition no-underline
                 {activeWorkspaceId === workspace.id
                   ? 'bg-white text-gray-900 font-semibold shadow-sm'
                   : 'text-gray-600 hover:bg-white hover:text-gray-900'}"
               on:contextmenu|preventDefault={() => openMenuId = workspace.id}
             >
+              <span class="shrink-0 w-8 h-8 rounded-full flex items-center justify-center {activeWorkspaceId === workspace.id ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-500 group-hover:text-gray-700'}">
+                <Buildings size={18} weight="bold" />
+              </span>
               <span class="truncate">{workspace.title}</span>
             </a>
             <button
@@ -260,9 +263,10 @@
                   <a
                     use:link
                     href={`/board/${board.id}`}
-                    class="block px-2 py-1 rounded-md text-xs text-gray-600 hover:bg-white hover:text-gray-900 truncate no-underline transition"
+                    class="group flex items-center gap-1.5 px-2 py-1 rounded-md text-[0.95rem] text-gray-600 hover:bg-white hover:text-gray-900 no-underline transition"
                   >
-                    {board.title}
+                    <Kanban size={16} weight="bold" class="shrink-0 text-gray-400 group-hover:text-gray-600" />
+                    <span class="truncate">{board.title}</span>
                   </a>
                 {/each}
               </div>
@@ -277,7 +281,7 @@
     {#if addingWorkspace}
       <input
         bind:this={newWorkspaceInput}
-        class="w-full px-2 py-1.5 text-sm border border-[#e6e6e6] rounded-lg bg-white outline-none focus:border-gray-900"
+        class="w-full px-2 py-1.5 text-base border border-[#e6e6e6] rounded-lg bg-white outline-none focus:border-gray-900"
         bind:value={newWorkspaceTitle}
         placeholder="Workspace title"
         on:keydown={(e) => {
@@ -286,12 +290,12 @@
         }}
       />
       <div class="flex gap-2 mt-2">
-        <button class="flex-1 px-2 py-1 text-xs rounded-lg bg-gray-900 text-white font-medium" on:click={addWorkspace}>Add</button>
-        <button class="flex-1 px-2 py-1 text-xs rounded-lg border border-[#e6e6e6] bg-white text-gray-700" on:click={cancelAddWorkspace}>Cancel</button>
+        <button class="flex-1 px-2 py-1 text-sm rounded-lg bg-gray-900 text-white font-medium" on:click={addWorkspace}>Add</button>
+        <button class="flex-1 px-2 py-1 text-sm rounded-lg border border-[#e6e6e6] bg-white text-gray-700" on:click={cancelAddWorkspace}>Cancel</button>
       </div>
     {:else}
       <button
-        class="w-full flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-gray-500 rounded-lg border border-dashed border-[#d4d4d4] hover:border-gray-400 hover:text-gray-900 transition !bg-transparent"
+        class="w-full flex items-center justify-center gap-1 px-3 py-2 text-base font-medium text-gray-500 rounded-lg border border-dashed border-[#d4d4d4] hover:border-gray-400 hover:text-gray-900 transition !bg-transparent"
         on:click={openAddWorkspace}
       >
         <span class="text-base leading-none">+</span>
@@ -313,7 +317,7 @@
         alt="Avatar"
       />
       {#if !collapsed}
-        <span class="text-sm font-medium truncate flex-1 text-left">{userName}</span>
+        <span class="text-base font-medium truncate flex-1 text-left">{userName}</span>
       {/if}
     </button>
     {#if showUserMenu}

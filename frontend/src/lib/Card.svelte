@@ -45,19 +45,33 @@
     activeMenu.set(null);
   }
 
-  async function saveMeta(nextMeta) {
-    await fetch(`${api}/api/cards/${card.id}`, {
+  async function saveCard(updates = {}) {
+    const payload = {
+      title: updates.title ?? card.title,
+      description: updates.description ?? card.description,
+      column_id: updates.column_id ?? card.column_id,
+      position: updates.position ?? card.position,
+      meta: updates.meta ?? meta,
+      archived: updates.archived ?? card.archived,
+      completed: updates.completed ?? card.completed
+    };
+    const res = await fetch(`${api}/api/cards/${card.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: card.title,
-        description: card.description,
-        column_id: card.column_id,
-        position: card.position,
-        meta: nextMeta
-      })
+      body: JSON.stringify(payload)
     });
-    dispatch('cardMoved', { ...card, meta: nextMeta });
+    if (!res.ok) throw new Error(`Request failed (${res.status})`);
+    const updated = await res.json();
+    dispatch('cardMoved', updated);
+    return updated;
+  }
+
+  async function saveMeta(nextMeta) {
+    try {
+      await saveCard({ meta: nextMeta });
+    } catch (err) {
+      console.error('[Card] save meta failed', err);
+    }
   }
 
   function addLink() {
@@ -85,19 +99,7 @@
       return;
     }
     try {
-      const res = await fetch(`${api}/api/cards/${card.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: newTitle,
-          description: card.description,
-          column_id: card.column_id,
-          position: card.position,
-          meta
-        })
-      });
-      if (!res.ok) throw new Error(`Request failed (${res.status})`);
-      dispatch('cardMoved', { ...card, title: newTitle });
+      await saveCard({ title: newTitle });
     } catch (err) {
       console.error('[Card] rename failed', err);
     }
@@ -112,6 +114,24 @@
     closeMenus();
     await fetch(`${api}/api/cards/${card.id}`, { method: 'DELETE' });
     dispatch('cardMoved', { ...card, deleted: true });
+  }
+
+  async function toggleCompleted() {
+    closeMenus();
+    try {
+      await saveCard({ completed: !card.completed });
+    } catch (err) {
+      console.error('[Card] toggle completed failed', err);
+    }
+  }
+
+  async function toggleArchived() {
+    closeMenus();
+    try {
+      await saveCard({ archived: !card.archived });
+    } catch (err) {
+      console.error('[Card] toggle archived failed', err);
+    }
   }
 
   function toggleMenu() {
@@ -142,19 +162,7 @@
   async function saveDetail() {
     const nextMeta = { ...meta, subtasks: checklist };
     try {
-      const res = await fetch(`${api}/api/cards/${card.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: detailTitle,
-          description: detailDescription,
-          column_id: card.column_id,
-          position: card.position,
-          meta: nextMeta
-        })
-      });
-      if (!res.ok) throw new Error(`Request failed (${res.status})`);
-      dispatch('cardMoved', { ...card, title: detailTitle, description: detailDescription, meta: nextMeta });
+      await saveCard({ title: detailTitle, description: detailDescription, meta: nextMeta });
       detailOpen = false;
     } catch (err) {
       console.error('[Card] save detail failed', err);
@@ -212,8 +220,8 @@
 />
 
 <div
-  class="group relative bg-white rounded-[10px] border border-[#e6e6e6] px-4 py-2 mb-2 active:cursor-grabbing transition-colors hover:border-[#d4d4d4] hover:bg-[#fafafa]"
-  draggable={!editingTitle}
+  class="group relative rounded-[10px] border px-4 py-2 mb-2 active:cursor-grabbing transition-colors {card.archived ? 'bg-gray-50 border-gray-200 opacity-80' : 'bg-white border-[#e6e6e6] hover:border-[#d4d4d4] hover:bg-[#fafafa]'}"
+  draggable={!editingTitle && !card.archived}
   on:dragstart={onDragStart}
   on:click={openDetail}
   on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && openDetail()}
@@ -244,6 +252,18 @@
           Add link
         </button>
         <button
+          class="block w-full rounded-md border border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-gray-900 hover:bg-gray-100 hover:text-gray-900"
+          on:click|stopPropagation={toggleCompleted}
+        >
+          {card.completed ? 'Mark incomplete' : 'Mark complete'}
+        </button>
+        <button
+          class="block w-full rounded-md border border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-gray-900 hover:bg-gray-100 hover:text-gray-900"
+          on:click|stopPropagation={toggleArchived}
+        >
+          {card.archived ? 'Unarchive' : 'Archive'}
+        </button>
+        <button
           class="block w-full rounded-md border border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-red-600 hover:bg-red-50 hover:text-red-600"
           on:click|stopPropagation={deleteCard}
         >
@@ -272,7 +292,19 @@
       <button class="text-xs px-2 py-1 secondary" on:click|stopPropagation={cancelRename} on:keydown={(e) => e.stopPropagation()}>Cancel</button>
     </div>
   {:else}
-    <h3 class="pr-6 text-sm font-semibold text-gray-900 leading-snug">{card.title}</h3>
+    <div class="flex items-center gap-2 pr-6">
+      <button
+        class="shrink-0 w-5 h-5 rounded-full border flex items-center justify-center hidden group-hover:flex focus:flex transition {card.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white border-gray-300 text-transparent hover:border-gray-900'}"
+        on:click|stopPropagation={toggleCompleted}
+        aria-label={card.completed ? 'Mark incomplete' : 'Mark complete'}
+      >
+        {#if card.completed}<Check size={10} weight="bold" />{/if}
+      </button>
+      <h3 class="text-sm font-semibold leading-snug {card.completed ? 'text-gray-400 line-through' : 'text-gray-900'}">{card.title}</h3>
+    </div>
+  {/if}
+  {#if card.archived}
+    <div class="mt-1 text-[11px] font-medium text-amber-600">Archived</div>
   {/if}
   {#if card.description}
     <div class="mt-2 text-gray-500" aria-hidden="true">
@@ -334,6 +366,18 @@
       Add link
     </button>
     <button
+      class="block w-full rounded-md border border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-gray-900 hover:bg-gray-100 hover:text-gray-900"
+      on:click|stopPropagation={toggleCompleted}
+    >
+      {card.completed ? 'Mark incomplete' : 'Mark complete'}
+    </button>
+    <button
+      class="block w-full rounded-md border border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-gray-900 hover:bg-gray-100 hover:text-gray-900"
+      on:click|stopPropagation={toggleArchived}
+    >
+      {card.archived ? 'Unarchive' : 'Archive'}
+    </button>
+    <button
       class="block w-full rounded-md border border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-red-600 hover:bg-red-50 hover:text-red-600"
       on:click|stopPropagation={deleteCard}
     >
@@ -380,6 +424,24 @@
             class="w-full px-3 py-2 border border-[#e6e6e6] rounded-lg bg-white text-sm font-semibold text-gray-900 outline-none focus:border-gray-900"
             bind:value={detailTitle}
           />
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition {card.completed ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-white border-[#e6e6e6] text-gray-700 hover:bg-gray-50'}"
+            on:click={() => toggleCompleted()}
+          >
+            <span class="w-4 h-4 rounded border flex items-center justify-center {card.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white border-gray-300'}">
+              {#if card.completed}<Check size={10} weight="bold" />{/if}
+            </span>
+            {card.completed ? 'Completed' : 'Mark complete'}
+          </button>
+          <button
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition {card.archived ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-white border-[#e6e6e6] text-gray-700 hover:bg-gray-50'}"
+            on:click={() => toggleArchived()}
+          >
+            {card.archived ? 'Unarchive' : 'Archive'}
+          </button>
         </div>
 
         <div class="flex flex-col gap-1.5">

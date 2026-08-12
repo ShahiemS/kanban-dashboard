@@ -237,6 +237,12 @@ app.patch('/api/columns/:id/archive', async (req, res) => {
   res.sendStatus(204);
 });
 
+app.patch('/api/columns/:id/archive-completed', async (req, res) => {
+  const { id } = req.params;
+  await pool.query('UPDATE cards SET archived = true WHERE column_id = $1 AND archived = false AND completed = true', [id]);
+  res.sendStatus(204);
+});
+
 app.patch('/api/columns/reorder', async (req, res) => {
   const { ids } = req.body;
   const client = await pool.connect();
