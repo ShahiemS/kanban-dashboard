@@ -111,7 +111,7 @@
       const col = await res.json();
       columns = [...columns, col];
       newColumnTitle = '';
-      showAddColumn = false;
+      tick().then(() => columnInput?.focus());
     } catch (err) {
       error = 'Could not add column. Is the server running?';
     }

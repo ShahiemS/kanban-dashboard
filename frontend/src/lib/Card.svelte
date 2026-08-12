@@ -8,6 +8,7 @@
   import { get } from 'svelte/store';
   import { fly } from 'svelte/transition';
   import { DotsThree, Link, X, Check, Article, TextB, TextH, TextItalic, TextUnderline, ListBullets, ListNumbers } from 'phosphor-svelte';
+  import Modal from './Modal.svelte';
 
   export let card;
   export let api;
@@ -28,6 +29,7 @@
   let editingTitle = false;
   let editTitle = card.title;
   let titleInput = null;
+  let showUnsavedConfirm = false;
 
   $: meta = card.meta || {};
   $: coverImage = meta.cover_image || '';
@@ -35,6 +37,7 @@
   $: tags = Array.isArray(meta.tags) && meta.tags.length
     ? meta.tags
     : (meta.tag ? [{ label: meta.tag, color: meta.tag_color || '#0079bf' }] : []);
+  $: dirty = detailOpen && (detailTitle !== card.title || detailDescription !== (card.description || ''));
   $: completedCount = checklists.reduce((sum, list) => sum + list.items.filter(i => i.done).length, 0);
   $: totalCount = checklists.reduce((sum, list) => sum + list.items.length, 0);
   $: progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -243,6 +246,23 @@
     editItemText = '';
   }
 
+  function closeDetail() {
+    if (dirty) {
+      showUnsavedConfirm = true;
+      return;
+    }
+    detailOpen = false;
+  }
+
+  function confirmClose() {
+    showUnsavedConfirm = false;
+    detailOpen = false;
+  }
+
+  function cancelClose() {
+    showUnsavedConfirm = false;
+  }
+
   function deleteDetail() {
     deleteCard();
     detailOpen = false;
@@ -253,8 +273,14 @@
   on:click={closeMenus}
   on:keydown={(e) => {
     if (e.key === 'Escape') {
-      detailOpen = false;
+      closeDetail();
       closeMenus();
+    }
+  }}
+  on:beforeunload={(e) => {
+    if (dirty) {
+      e.preventDefault();
+      e.returnValue = '';
     }
   }}
 />
@@ -431,8 +457,8 @@
     <div
       class="absolute inset-0 bg-black/25 transition-opacity"
       role="presentation"
-      on:click={() => detailOpen = false}
-      on:keydown={(e) => e.key === 'Escape' && (detailOpen = false)}
+      on:click={closeDetail}
+      on:keydown={(e) => e.key === 'Escape' && closeDetail()}
     />
     <div
       class="absolute right-0 top-0 h-full w-[480px] max-w-full bg-white shadow-2xl flex flex-col"
@@ -445,7 +471,7 @@
         <h2 class="text-lg font-semibold text-gray-900">Card details</h2>
         <button
           class="flex items-center justify-center w-8 h-8 rounded-md bg-transparent border-none text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-          on:click={() => detailOpen = false}
+          on:click={closeDetail}
           aria-label="Close"
         >
           <X size={18} />
@@ -662,15 +688,28 @@
         <button class="px-3 py-1.5 rounded-lg bg-transparent text-sm text-red-600 hover:bg-red-50" on:click={deleteDetail}>
           Delete
         </button>
-        <div class="flex gap-2">
-          <button class="px-3 py-1.5 rounded-lg border border-[#e6e6e6] bg-white text-sm text-gray-700 hover:bg-gray-50" on:click={() => detailOpen = false}>
-            Cancel
-          </button>
-          <button class="px-3 py-1.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800" on:click={saveDetail}>
-            Save
-          </button>
+        <div class="flex items-center gap-3">
+          <span class="text-xs font-medium text-amber-600 {dirty ? 'visible' : 'invisible'}">Unsaved changes</span>
+          <div class="flex gap-2">
+            <button class="px-3 py-1.5 rounded-lg border border-[#e6e6e6] bg-white text-sm text-gray-700 hover:bg-gray-50" on:click={closeDetail}>
+              Cancel
+            </button>
+            <button class="px-3 py-1.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800" on:click={saveDetail}>
+              Save
+            </button>
+          </div>
         </div>
       </div>
     </div>
   </div>
+{/if}
+
+{#if showUnsavedConfirm}
+  <Modal title="Unsaved changes" on:close={cancelClose}>
+    <p class="text-sm text-gray-700 mb-4">You have unsaved changes. Close without saving?</p>
+    <div class="flex gap-2 justify-end">
+      <button class="secondary" on:click={cancelClose}>Keep editing</button>
+      <button on:click={confirmClose}>Close without saving</button>
+    </div>
+  </Modal>
 {/if}
