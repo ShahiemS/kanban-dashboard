@@ -270,11 +270,13 @@
         {/if}
       {/if}
 
-      <div class="board-controls">
-        <button class="archived-toggle" on:click={toggleArchivedView}>
-          {showArchived ? 'Back to boards' : 'View archived boards'}
-        </button>
-      </div>
+      {#if workspaceId}
+        <div class="board-controls">
+          <button class="archived-toggle" on:click={toggleArchivedView}>
+            {showArchived ? 'Back to boards' : 'View archived boards'}
+          </button>
+        </div>
+      {/if}
     </header>
 
     <div class="flex-1 overflow-auto">

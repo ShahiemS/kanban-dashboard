@@ -30,6 +30,7 @@
   let editTitle = '';
   let addingWorkspace = false;
   let newWorkspaceTitle = '';
+  let searchQuery = '';
   let newWorkspaceInput = null;
   let collapsed = false;
   let workspaceBoards = {};
@@ -194,18 +195,6 @@
 />
 
 <div class="flex flex-col h-full bg-[#f8f8f8] border-r border-[#e6e6e6] transition-all duration-200 {collapsed ? 'w-12' : 'w-60'}">
-  <div class="p-2">
-    <a
-      use:link
-      href="/"
-      class="flex items-center rounded-lg text-sm font-medium text-gray-600 hover:bg-white hover:text-gray-900 transition no-underline
-        {collapsed ? 'justify-center w-8 h-8 mx-auto' : 'gap-2 px-3 py-2'}"
-    >
-      <House size={18} weight="bold" class="shrink-0" />
-      {#if !collapsed}Home{/if}
-    </a>
-  </div>
-
   <div class="p-4 pb-6 flex items-center justify-between">
     {#if !collapsed}
       <h2 class="text-base md:text-sm font-semibold text-gray-900">Workspaces</h2>
@@ -228,13 +217,38 @@
   </div>
 
   {#if !collapsed}
-  <div class="flex-1 overflow-y-auto p-2 space-y-0.5">
+  <div class="p-2 pb-0">
+    <input
+      type="search"
+      class="w-full px-3 py-1.5 text-sm border border-[#e6e6e6] rounded-lg bg-white outline-none focus:border-gray-900"
+      bind:value={searchQuery}
+      placeholder="Search workspaces & boards"
+    />
+  </div>
+  {/if}
+  <div class="p-2 pt-0 mt-3">
+    <a
+      use:link
+      href="/"
+      class="group flex items-center gap-2 px-3 py-2 rounded-lg text-base transition no-underline
+        {activeWorkspaceId === null
+          ? 'bg-white text-gray-900 font-semibold shadow-sm'
+          : 'text-gray-600 hover:bg-white hover:text-gray-900'}"
+    >
+      <span class="shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 text-gray-500 group-hover:text-gray-700">
+        <House size={18} weight="bold" />
+      </span>
+      {#if !collapsed}<span class="truncate">Home</span>{/if}
+    </a>
+  </div>
+  {#if !collapsed}
+  <div class="flex-1 overflow-y-auto p-2 space-y-2">
     {#if loading}
       <p class="px-3 py-2 text-sm text-gray-500">Loading…</p>
     {:else if error}
       <p class="px-3 py-2 text-sm text-red-600">{error}</p>
     {:else}
-      {#each $workspaces as workspace (workspace.id)}
+      {#each $workspaces.filter(w => !searchQuery || w.title.toLowerCase().includes(searchQuery.toLowerCase())) as workspace (workspace.id)}
         <div class="relative group">
           {#if editingWorkspaceId === workspace.id}
             <div class="px-2 py-1.5">
@@ -261,7 +275,7 @@
                   : 'text-gray-600 hover:bg-white hover:text-gray-900'}"
               on:contextmenu|preventDefault={() => openMenuId = workspace.id}
             >
-              <span class="shrink-0 w-8 h-8 rounded-full flex items-center justify-center {activeWorkspaceId === workspace.id ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-500 group-hover:text-gray-700'}">
+              <span class="shrink-0 w-8 h-8 rounded-full flex items-center justify-center {activeWorkspaceId === workspace.id ? 'bg-gray-200 text-gray-700' : 'bg-gray-100 text-gray-500 group-hover:text-gray-700'}">
                 <Buildings size={18} weight="bold" />
               </span>
               <span class="truncate">{workspace.title}</span>
@@ -280,8 +294,8 @@
               </div>
             {/if}
             {#if activeWorkspaceId === workspace.id && workspaceBoards[workspace.id]?.length}
-              <div class="pl-4 py-1 space-y-1.5">
-                {#each workspaceBoards[workspace.id] as board}
+              <div class="pl-4 py-1 space-y-2">
+                {#each workspaceBoards[workspace.id].filter(b => !searchQuery || b.title.toLowerCase().includes(searchQuery.toLowerCase())) as board}
                   <a
                     use:link
                     href={`/board/${board.id}`}

@@ -25,6 +25,7 @@
   let showAddColumn = false;
   let columnInput = null;
   let showArchived = false;
+  let cardSearchQuery = '';
 
   async function loadBoard(id) {
     if (!id) return;
@@ -209,6 +210,12 @@
       </nav>
 
       <div class="board-controls">
+        <input
+          type="search"
+          class="px-3 py-1.5 text-sm border border-[#e6e6e6] rounded-lg bg-white outline-none focus:border-gray-900"
+          bind:value={cardSearchQuery}
+          placeholder="Search cards"
+        />
         <button class="archived-toggle" on:click={toggleArchivedView}>
           {showArchived ? 'Hide archived cards' : 'Show archived cards'}
         </button>
@@ -230,7 +237,7 @@
 
         <div class="board">
           {#each columns as column (column.id)}
-            <Column {column} cards={cards.filter(c => c.column_id === column.id)} on:cardMoved={handleCardMoved} on:archiveAll={handleArchiveAll} on:archiveCompleted={handleArchiveCompleted} on:columnRenamed={handleColumnRenamed} on:columnMoved={handleColumnMoved} on:columnDeleted={handleColumnDeleted} api={api} />
+            <Column {column} cards={cards.filter(c => c.column_id === column.id && (!cardSearchQuery || c.title.toLowerCase().includes(cardSearchQuery.toLowerCase())))} on:cardMoved={handleCardMoved} on:archiveAll={handleArchiveAll} on:archiveCompleted={handleArchiveCompleted} on:columnRenamed={handleColumnRenamed} on:columnMoved={handleColumnMoved} on:columnDeleted={handleColumnDeleted} api={api} />
           {/each}
 
           {#if showAddColumn}
