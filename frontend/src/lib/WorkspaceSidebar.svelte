@@ -1,7 +1,7 @@
 <script>
   import { onMount, tick, createEventDispatcher } from 'svelte';
   import { link } from 'svelte-spa-router';
-  import { DotsThree, CaretLeft, List, Buildings, Kanban, House, X } from 'phosphor-svelte';
+  import { DotsThree, CaretLeft, List, Buildings, Kanban, House, X, SignOut } from 'phosphor-svelte';
   import { workspaces } from './workspaceStore.js';
 
   const dispatch = createEventDispatcher();
@@ -336,7 +336,7 @@
                   <a
                     use:link
                     href={`/board/${board.id}`}
-                    class="group flex items-center gap-1.5 px-2 py-1 rounded-md text-[0.95rem] text-gray-600 hover:bg-white hover:text-gray-900 no-underline transition"
+                    class="group flex items-center gap-1.5 px-2 py-2 rounded-md text-[0.95rem] text-gray-600 hover:bg-white hover:text-gray-900 no-underline transition"
                     on:click={closeMobileSidebar}
                   >
                     <Kanban size={16} weight="bold" class="shrink-0 text-gray-400 group-hover:text-gray-600" />
@@ -402,6 +402,16 @@
         on:click|stopPropagation
         on:keydown={(e) => { if (e.key === 'Escape') closeMenu(); }}
       >
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-sm font-semibold text-gray-900">Profile</span>
+          <button
+            class="p-1 bg-transparent border-none text-gray-400 hover:text-gray-700 rounded"
+            on:click|stopPropagation={() => showUserMenu = false}
+            aria-label="Close"
+          >
+            <X size={14} weight="bold" />
+          </button>
+        </div>
         <label class="block text-xs text-gray-500 mb-1" for="user-name">Name</label>
         <input
           id="user-name"
@@ -440,7 +450,10 @@
             </button>
           {/each}
         </div>
-        <button class="block w-full rounded-md border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-gray-900 hover:bg-gray-100" on:click|stopPropagation={onLogout}>Log out</button>
+        <button class="flex items-center gap-2 w-full rounded-md border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-gray-900 hover:bg-gray-100" on:click|stopPropagation={onLogout}>
+          <SignOut size={14} weight="bold" />
+          Log out
+        </button>
       </div>
     {/if}
   </div>

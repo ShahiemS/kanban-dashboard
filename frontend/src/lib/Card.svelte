@@ -7,7 +7,7 @@
   import { createEventDispatcher, tick } from 'svelte';
   import { get } from 'svelte/store';
   import { fly } from 'svelte/transition';
-  import { DotsThree, Link, X, Check, Article, TextB, TextH, TextItalic, TextUnderline, ListBullets, ListNumbers, PencilSimple } from 'phosphor-svelte';
+  import { DotsThree, Link, X, Check, Article, TextB, TextH, TextItalic, TextUnderline, ListBullets, ListNumbers, PencilSimple, Trash, Timer, Play, Pause, ArrowCounterClockwise } from 'phosphor-svelte';
   import Modal from './Modal.svelte';
 
   export let card;
@@ -30,6 +30,8 @@
   let editTitle = card.title;
   let titleInput = null;
   let showUnsavedConfirm = false;
+  let menuBtnEl = null;
+  let menuPos = { top: 0, left: 0 };
   let detailTags = [];
   let newTagLabel = '';
   let newTagColor = '#0079bf';
@@ -37,16 +39,55 @@
   let linkUrl = '';
   let linkLabel = '';
   let editingLinkIndex = -1;
+  let attachmentModalOpen = false;
+  let attachmentName = '';
+  let attachmentUrl = '';
+  let editingAttachmentIndex = -1;
+  let showColorPicker = false;
+  let activeTab = 'details';
+  let editingDetailTitle = false;
+  let showDeleteConfirm = false;
+  let newComment = '';
+  let editingCommentIndex = -1;
+  let editCommentText = '';
+
+  // Pomodoro timer
+  let pomodoroMinutes = 25;
+  let breakMinutes = 5;
+  let pomodoroSeconds = pomodoroMinutes * 60;
+  let pomodoroRunning = false;
+  let pomodoroInterval = null;
+  let pomodoroMode = 'work'; // 'work' | 'break'
+  let pomodoroCount = 0;
 
   const TAG_COLORS = ['#0079bf', '#61bd4f', '#f2d600', '#ff9f1a', '#eb5a46', '#c377e0', '#00c2e0', '#344563'];
+
+  function focusOnMount(node) {
+    node.focus();
+    node.select();
+  }
 
   $: meta = card.meta || {};
   $: coverImage = meta.cover_image || '';
   $: links = Array.isArray(meta.links) ? meta.links : [];
+  $: attachments = Array.isArray(meta.attachments) ? meta.attachments : [];
+  $: comments = Array.isArray(meta.comments) ? meta.comments : [];
   $: tags = Array.isArray(meta.tags) && meta.tags.length
     ? meta.tags
     : (meta.tag ? [{ label: meta.tag, color: meta.tag_color || '#0079bf' }] : []);
   $: dirty = detailOpen && (detailTitle !== card.title || detailDescription !== (card.description || ''));
+
+  let savedDocTitle = '';
+  $: if (typeof document !== 'undefined') {
+    if (pomodoroRunning || pomodoroSeconds < (pomodoroMode === 'work' ? pomodoroMinutes : breakMinutes) * 60) {
+      if (!savedDocTitle) savedDocTitle = document.title;
+      const label = pomodoroMode === 'work' ? 'Focus' : 'Break';
+      document.title = `${formatTime(pomodoroSeconds)} ${label} | Pomodoro`;
+    } else if (savedDocTitle) {
+      document.title = savedDocTitle;
+      savedDocTitle = '';
+    }
+  }
   $: completedCount = checklists.reduce((sum, list) => sum + list.items.filter(i => i.done).length, 0);
   $: totalCount = checklists.reduce((sum, list) => sum + list.items.length, 0);
   $: progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -126,6 +167,170 @@
     closeLinkModal();
   }
 
+  function openAddAttachment() {
+    closeMenus();
+    editingAttachmentIndex = -1;
+    attachmentName = '';
+    attachmentUrl = '';
+    attachmentModalOpen = true;
+  }
+
+  function openEditAttachment(index) {
+    const att = attachments[index];
+    editingAttachmentIndex = index;
+    attachmentName = att.name;
+    attachmentUrl = att.url;
+    attachmentModalOpen = true;
+  }
+
+  function closeAttachmentModal() {
+    attachmentModalOpen = false;
+    attachmentName = '';
+    attachmentUrl = '';
+    editingAttachmentIndex = -1;
+  }
+
+  function saveAttachment() {
+    const url = attachmentUrl.trim();
+    const name = attachmentName.trim() || url.split('/').pop() || 'Attachment';
+    if (!url) return;
+    const next = [...attachments];
+    if (editingAttachmentIndex >= 0) {
+      next[editingAttachmentIndex] = { name, url };
+    } else {
+      next.push({ name, url });
+    }
+    saveMeta({ ...meta, attachments: next });
+    closeAttachmentModal();
+  }
+
+  function removeAttachment(index) {
+    const next = attachments.filter((_, i) => i !== index);
+    saveMeta({ ...meta, attachments: next });
+  }
+
+  function removeLink(index) {
+    const next = links.filter((_, i) => i !== index);
+    saveMeta({ ...meta, links: next });
+  }
+
+  function addComment() {
+    if (!newComment.trim()) return;
+    const author = localStorage.getItem('kanban.user.name') || 'Anonymous';
+    const avatar = localStorage.getItem('kanban.user.avatarSeed') || '';
+    const comment = { text: newComment.trim(), timestamp: new Date().toISOString(), author, avatar };
+    saveMeta({ ...meta, comments: [...comments, comment] });
+    newComment = '';
+  }
+
+  function getAvatarUrl(seed) {
+    if (!seed) return '';
+    if (seed.startsWith('http')) return seed;
+    return `https://api.dicebear.com/7.x/lorelei/svg?seed=${seed}`;
+  }
+
+  function startPomodoro() {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+    pomodoroRunning = true;
+    pomodoroInterval = setInterval(() => {
+      pomodoroSeconds--;
+      if (pomodoroSeconds <= 0) {
+        clearInterval(pomodoroInterval);
+        pomodoroRunning = false;
+        const wasWork = pomodoroMode === 'work';
+        if (wasWork) {
+          pomodoroCount++;
+          pomodoroMode = 'break';
+          pomodoroSeconds = breakMinutes * 60;
+        } else {
+          pomodoroMode = 'work';
+          pomodoroSeconds = pomodoroMinutes * 60;
+        }
+        pomodoroNotify(wasWork ? 'Focus session done! Time for a break.' : 'Break over! Ready to focus again.');
+      }
+    }, 1000);
+  }
+
+  function pausePomodoro() {
+    pomodoroRunning = false;
+    if (pomodoroInterval) clearInterval(pomodoroInterval);
+  }
+
+  function resetPomodoro() {
+    pausePomodoro();
+    pomodoroMode = 'work';
+    pomodoroSeconds = pomodoroMinutes * 60;
+  }
+
+  function formatTime(totalSeconds) {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  }
+
+  function pomodoroNotify(message) {
+    // Audio alert - 3 beeps, louder and longer
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const beep = (freq, startTime, duration) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        gain.gain.value = 0.8;
+        gain.gain.setValueAtTime(0.8, ctx.currentTime + startTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + startTime + duration);
+        osc.start(ctx.currentTime + startTime);
+        osc.stop(ctx.currentTime + startTime + duration);
+      };
+      beep(880, 0, 0.4);
+      beep(1100, 0.5, 0.4);
+      beep(880, 1.0, 0.6);
+    } catch (e) {}
+    // Browser notification
+    if ('Notification' in window) {
+      if (Notification.permission === 'granted') {
+        new Notification('Pomodoro', { body: message, icon: '/favicon.svg' });
+      } else if (Notification.permission === 'default') {
+        Notification.requestPermission().then(p => {
+          if (p === 'granted') new Notification('Pomodoro', { body: message, icon: '/favicon.svg' });
+        });
+      }
+    }
+  }
+
+  function requestNotificationPermission() {
+    if ('Notification' in window && Notification.permission !== 'denied') {
+      Notification.requestPermission();
+    }
+  }
+
+  function deleteComment(index) {
+    const next = comments.filter((_, i) => i !== index);
+    saveMeta({ ...meta, comments: next });
+  }
+
+  function startEditComment(index) {
+    editingCommentIndex = index;
+    editCommentText = comments[index].text;
+  }
+
+  function saveEditComment() {
+    if (editingCommentIndex < 0) return;
+    const next = comments.map((c, i) => i === editingCommentIndex ? { ...c, text: editCommentText.trim() } : c);
+    saveMeta({ ...meta, comments: next });
+    editingCommentIndex = -1;
+    editCommentText = '';
+  }
+
+  function cancelEditComment() {
+    editingCommentIndex = -1;
+    editCommentText = '';
+  }
+
   async function renameCard() {
     closeMenus();
     editingTitle = true;
@@ -183,6 +388,10 @@
     if (current?.cardId === card.id && current?.type === 'menu') {
       activeMenu.set(null);
     } else {
+      if (menuBtnEl) {
+        const rect = menuBtnEl.getBoundingClientRect();
+        menuPos = { top: rect.bottom + 4, left: rect.right };
+      }
       activeMenu.set({ cardId: card.id, type: 'menu' });
     }
   }
@@ -291,10 +500,12 @@
     if (!newTagLabel.trim()) return;
     detailTags = [...detailTags, { label: newTagLabel.trim(), color: newTagColor }];
     newTagLabel = '';
+    saveMeta({ ...meta, tags: detailTags });
   }
 
   function deleteTag(index) {
     detailTags = detailTags.filter((_, i) => i !== index);
+    saveMeta({ ...meta, tags: detailTags });
   }
 
   function closeDetail() {
@@ -315,8 +526,17 @@
   }
 
   function deleteDetail() {
+    showDeleteConfirm = true;
+  }
+
+  function confirmDelete() {
+    showDeleteConfirm = false;
     deleteCard();
     detailOpen = false;
+  }
+
+  function cancelDelete() {
+    showDeleteConfirm = false;
   }
 </script>
 
@@ -352,6 +572,7 @@
 >
   <div class="absolute top-2 right-2">
     <button
+      bind:this={menuBtnEl}
       class="flex items-center justify-center w-6 h-6 rounded-md border border-transparent bg-transparent p-0 text-gray-400 opacity-0 group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-900 transition"
       on:click|stopPropagation={toggleMenu}
       aria-label="More options"
@@ -359,7 +580,7 @@
       <DotsThree size={14} weight="bold" />
     </button>
     {#if $activeMenu?.cardId === card.id && $activeMenu?.type === 'menu'}
-      <div class="absolute bottom-full right-0 z-30 min-w-[140px] rounded-[10px] border border-[#e6e6e6] bg-white p-1 shadow-[0_6px_16px_rgba(0,0,0,0.06)]">
+      <div class="fixed z-50 min-w-[140px] rounded-[10px] border border-[#e6e6e6] bg-white p-1 shadow-[0_6px_16px_rgba(0,0,0,0.06)]" style="top: {menuPos.top}px; left: {menuPos.left}px; transform: translateX(-100%)">
         <button
           class="block w-full rounded-md border border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-gray-900 hover:bg-gray-100 hover:text-gray-900"
           on:click|stopPropagation={renameCard}
@@ -464,9 +685,9 @@
     <div class="mt-2 flex flex-wrap gap-1.5">
       {#each tags as t}
         <span
-          class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
-          style="background-color: {t.color}1a; color: {t.color}"
+          class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium bg-white text-gray-900 border border-[#e6e6e6]"
         >
+          <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background-color: {t.color};"></span>
           {t.label}
         </span>
       {/each}
@@ -529,7 +750,23 @@
       transition:fly={{ x: 480, duration: 200, opacity: 1 }}
     >
       <div class="flex items-center justify-between px-5 py-4 border-b border-[#e6e6e6] shrink-0">
-        <h2 class="text-lg font-semibold text-gray-900">Card details</h2>
+        {#if editingDetailTitle}
+          <input
+            class="flex-1 mr-3 px-2 py-1 text-lg font-semibold text-gray-900 border border-[#e6e6e6] rounded-lg outline-none focus:border-gray-900 bg-white"
+            bind:value={detailTitle}
+            use:focusOnMount
+            on:blur={() => editingDetailTitle = false}
+            on:keydown={(e) => { if (e.key === 'Enter') editingDetailTitle = false; }}
+          />
+        {:else}
+          <button
+            class="flex items-center gap-2 bg-transparent border-none p-0 group text-left"
+            on:click={() => editingDetailTitle = true}
+          >
+            <h2 class="text-lg font-semibold text-gray-900 truncate">{detailTitle || 'Untitled'}</h2>
+            <PencilSimple size={14} class="shrink-0 text-gray-400 opacity-0 group-hover:opacity-100 transition" />
+          </button>
+        {/if}
         <button
           class="flex items-center justify-center w-8 h-8 rounded-md bg-transparent border-none text-gray-500 hover:bg-gray-100 hover:text-gray-900"
           on:click={closeDetail}
@@ -539,19 +776,36 @@
         </button>
       </div>
 
-      <div class="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+      <div class="flex gap-0 border-b border-[#e6e6e6] px-5">
+        <button
+          class="px-4 py-2.5 text-xs font-medium transition bg-transparent border-0 border-b-2 rounded-none {activeTab === 'details' ? 'border-b-black text-gray-900' : 'border-b-transparent text-gray-500 hover:text-gray-700'}"
+          on:click={() => activeTab = 'details'}
+        >Details</button>
+        <button
+          class="px-4 py-2.5 text-xs font-medium transition bg-transparent border-0 border-b-2 rounded-none {activeTab === 'links' ? 'border-b-black text-gray-900' : 'border-b-transparent text-gray-500 hover:text-gray-700'}"
+          on:click={() => activeTab = 'links'}
+        >Links ({links.length})</button>
+        <button
+          class="px-4 py-2.5 text-xs font-medium transition bg-transparent border-0 border-b-2 rounded-none {activeTab === 'labels' ? 'border-b-black text-gray-900' : 'border-b-transparent text-gray-500 hover:text-gray-700'}"
+          on:click={() => activeTab = 'labels'}
+        >Labels ({detailTags.length})</button>
+        <button
+          class="px-4 py-2.5 text-xs font-medium transition bg-transparent border-0 border-b-2 rounded-none {activeTab === 'comments' ? 'border-b-black text-gray-900' : 'border-b-transparent text-gray-500 hover:text-gray-700'}"
+          on:click={() => activeTab = 'comments'}
+        >Comments ({comments.length})</button>
+        <button
+          class="px-4 py-2.5 text-xs font-medium transition bg-transparent border-0 border-b-2 rounded-none {activeTab === 'pomodoro' ? 'border-b-black text-gray-900' : 'border-b-transparent text-gray-500 hover:text-gray-700'}"
+          on:click={() => activeTab = 'pomodoro'}
+        >Pomodoro</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-5 py-5 space-y-6">
+        {#if activeTab === 'details'}
         {#if coverImage}
           <img class="h-48 w-full rounded-xl object-cover" src={coverImage} alt="" />
         {/if}
 
-        <div class="flex flex-col gap-1.5">
-          <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide" for="card-detail-title">Title</label>
-          <input
-            id="card-detail-title"
-            class="w-full px-3 py-2 border border-[#e6e6e6] rounded-lg bg-white text-sm font-semibold text-gray-900 outline-none focus:border-gray-900"
-            bind:value={detailTitle}
-          />
-        </div>
+
 
         <div class="flex flex-wrap items-center gap-2">
           <button
@@ -603,7 +857,7 @@
               <span class="text-xs font-medium text-gray-500">{progressPercent}%</span>
             </div>
             <button
-              class="text-xs font-medium text-emerald-600 hover:text-emerald-700"
+              class="text-xs font-medium px-2 py-1 rounded border border-[#e6e6e6] bg-white text-gray-700 hover:bg-gray-50 transition"
               on:click={() => showCompleted = !showCompleted}
             >
               {showCompleted ? 'Hide completed' : 'Show completed'}
@@ -632,11 +886,11 @@
                   </button>
                 {/if}
                 <button
-                  class="text-gray-400 hover:text-red-600"
+                  class="p-1 rounded border border-[#e6e6e6] bg-white text-gray-400 hover:text-red-600 hover:border-red-200 transition"
                   on:click={() => deleteChecklist(li)}
                   aria-label="Delete checklist"
                 >
-                  <X size={14} />
+                  <X size={12} />
                 </button>
               </div>
 
@@ -709,83 +963,245 @@
           </div>
         </div>
 
-        {#if links.length > 0}
-          <div class="flex flex-col gap-2">
-            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Links</h4>
-            <div class="flex flex-wrap gap-3">
-              {#each links as link, i}
-                <span class="inline-flex items-center gap-1">
-                  <a
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="inline-flex max-w-[160px] items-center gap-1 text-xs text-blue-600 hover:underline"
-                  >
+        <div class="space-y-2">
+          <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Attachments</h4>
+          {#if attachments.length > 0}
+            <div class="flex flex-col gap-2">
+              {#each attachments as att, i}
+                <div class="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#e6e6e6] bg-white">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-gray-400">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                  </svg>
+                  <a href={att.url} target="_blank" rel="noopener noreferrer" class="flex-1 text-xs text-gray-900 hover:underline truncate">{att.name}</a>
+                  <button class="p-0 bg-transparent border-none text-gray-400 hover:text-gray-700" on:click={() => openEditAttachment(i)} aria-label="Edit attachment">
+                    <PencilSimple size={12} />
+                  </button>
+                  <button class="p-0 bg-transparent border-none text-gray-400 hover:text-red-500" on:click={() => removeAttachment(i)} aria-label="Remove attachment">
+                    <X size={12} weight="bold" />
+                  </button>
+                </div>
+              {/each}
+            </div>
+          {/if}
+          <button class="px-3 py-1.5 rounded-lg border border-[#e6e6e6] bg-white text-sm font-medium text-gray-900 hover:bg-gray-50" on:click={openAddAttachment}>+ Add attachment</button>
+        </div>
+
+        {:else if activeTab === 'links'}
+          <div class="space-y-3">
+            {#if links.length > 0}
+              <div class="flex flex-wrap gap-2">
+                {#each links as link, i}
+                  <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium bg-white border border-[#e6e6e6] text-gray-900">
                     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
                       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
                       <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
                     </svg>
-                    <span class="truncate">{link.label}</span>
-                  </a>
-                  <button
-                    class="p-0 text-gray-400 hover:text-gray-700 bg-transparent border-none"
-                    on:click={() => openEditLink(i)}
-                    aria-label="Edit link"
-                  >
-                    <PencilSimple size={12} />
-                  </button>
-                </span>
-              {/each}
+                    <a href={link.url} target="_blank" rel="noopener noreferrer" class="max-w-[120px] truncate text-gray-900 hover:underline no-underline">{link.label}</a>
+                    <button class="flex items-center justify-center p-0 bg-transparent border-none text-gray-400 hover:text-gray-900 transition" on:click={() => openEditLink(i)} aria-label="Edit link">
+                      <PencilSimple size={11} />
+                    </button>
+                    <button class="flex items-center justify-center w-4 h-4 rounded-full bg-transparent border-none text-gray-400 hover:text-gray-900 hover:bg-gray-200 transition" on:click={() => removeLink(i)} aria-label="Remove link">
+                      <X size={10} weight="bold" />
+                    </button>
+                  </span>
+                {/each}
+              </div>
+            {:else}
+              <p class="text-xs text-gray-400">No links yet.</p>
+            {/if}
+            <button class="px-3 py-1.5 rounded-lg border border-[#e6e6e6] bg-white text-sm font-medium text-gray-900 hover:bg-gray-50" on:click={openAddLink}>+ Add link</button>
+          </div>
+
+        {:else if activeTab === 'labels'}
+          <div class="space-y-3">
+            {#if detailTags.length > 0}
+              <div class="flex flex-wrap gap-2">
+                {#each detailTags as tag, i}
+                  <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium bg-white text-gray-900 border border-[#e6e6e6]">
+                    <span class="w-2 h-2 rounded-full shrink-0" style="background-color: {tag.color};"></span>
+                    {tag.label}
+                    <button class="flex items-center justify-center w-4 h-4 rounded-full bg-transparent border-none text-gray-400 hover:text-gray-900 hover:bg-gray-200 transition" on:click={() => deleteTag(i)} aria-label="Remove label">
+                      <X size={10} weight="bold" />
+                    </button>
+                  </span>
+                {/each}
+              </div>
+            {/if}
+            <div class="flex gap-2 items-center">
+              <div class="relative">
+                <button
+                  type="button"
+                  class="w-7 h-7 rounded-full border border-[#e6e6e6] shrink-0"
+                  style="background-color: {newTagColor};"
+                  on:click|stopPropagation={() => showColorPicker = !showColorPicker}
+                  aria-label="Pick color"
+                ></button>
+                {#if showColorPicker}
+                  <div class="fixed z-[9999] p-2 bg-white border border-[#e6e6e6] rounded-lg shadow-[0_6px_16px_rgba(0,0,0,0.12)]" style="width: 120px; margin-top: 4px;">
+                    <div class="grid grid-cols-4 gap-1">
+                      {#each TAG_COLORS as c}
+                        <button
+                          type="button"
+                          class="w-6 h-6 rounded-full border-2 transition {newTagColor === c ? 'border-gray-900' : 'border-transparent hover:border-gray-300'}"
+                          style="background-color: {c};"
+                          on:click|stopPropagation={() => { newTagColor = c; showColorPicker = false; }}
+                          aria-label="Select color"
+                        ></button>
+                      {/each}
+                    </div>
+                  </div>
+                {/if}
+              </div>
+              <input
+                class="flex-1 px-3 py-1.5 border border-[#e6e6e6] rounded-lg text-sm text-gray-900 outline-none focus:border-gray-900"
+                bind:value={newTagLabel}
+                placeholder="Label name"
+                on:keydown={(e) => e.key === 'Enter' && addTag()}
+              />
+              <button class="px-3 py-1.5 rounded-lg border border-[#e6e6e6] bg-white text-sm font-medium text-gray-900 hover:bg-gray-50" on:click={addTag}>Add</button>
             </div>
+          </div>
+
+        {:else if activeTab === 'comments'}
+          <div class="space-y-4">
+            {#if comments.length > 0}
+              <div class="flex flex-col gap-3">
+                {#each comments as comment, i}
+                  <div class="flex gap-3 px-3 py-2.5 rounded-lg border border-[#e6e6e6] bg-white">
+                    {#if comment.avatar}
+                      <img class="w-8 h-8 rounded-full shrink-0 mt-0.5" src={getAvatarUrl(comment.avatar)} alt={comment.author} />
+                    {:else}
+                      <div class="w-8 h-8 rounded-full shrink-0 mt-0.5 bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">{(comment.author || 'A').charAt(0).toUpperCase()}</div>
+                    {/if}
+                    <div class="flex flex-col gap-1 flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-medium text-gray-900">{comment.author}</span>
+                      <span class="text-[10px] text-gray-400">{new Date(comment.timestamp).toLocaleDateString()} {new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    {#if editingCommentIndex === i}
+                      <div class="flex flex-col gap-2 mt-1">
+                        <textarea
+                          class="w-full px-2 py-1.5 border border-[#e6e6e6] rounded-lg text-sm text-gray-900 outline-none focus:border-gray-900 resize-none"
+                          rows="2"
+                          bind:value={editCommentText}
+                          on:keydown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveEditComment(); }}
+                        ></textarea>
+                        <div class="flex gap-2 justify-end">
+                          <button class="px-2 py-1 text-xs rounded border border-[#e6e6e6] bg-white text-gray-700 hover:bg-gray-50" on:click={cancelEditComment}>Cancel</button>
+                          <button class="px-2 py-1 text-xs rounded border border-gray-900 bg-gray-900 text-white hover:bg-gray-800" on:click={saveEditComment}>Save</button>
+                        </div>
+                      </div>
+                    {:else}
+                      <p class="text-sm text-gray-700 whitespace-pre-wrap">{comment.text}</p>
+                      <div class="flex gap-2 mt-1">
+                        <button class="p-0 bg-transparent border-none text-gray-400 hover:text-gray-700 text-xs" on:click={() => startEditComment(i)}>Edit</button>
+                        <button class="p-0 bg-transparent border-none text-gray-400 hover:text-red-500 text-xs" on:click={() => deleteComment(i)}>Delete</button>
+                      </div>
+                    {/if}
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            {:else}
+              <p class="text-xs text-gray-400">No comments yet.</p>
+            {/if}
+            <div class="flex flex-col gap-2">
+              <textarea
+                class="w-full px-3 py-2 border border-[#e6e6e6] rounded-lg text-sm text-gray-900 outline-none focus:border-gray-900 resize-none"
+                rows="3"
+                bind:value={newComment}
+                placeholder="Write a comment..."
+                on:keydown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) addComment(); }}
+              ></textarea>
+              <div class="flex justify-end">
+                <button class="px-3 py-1.5 rounded-lg border border-[#e6e6e6] bg-white text-sm font-medium text-gray-900 hover:bg-gray-50" on:click={addComment}>Add comment</button>
+              </div>
+            </div>
+          </div>
+
+        {:else if activeTab === 'pomodoro'}
+          <div class="flex flex-col items-center gap-6 py-4">
+            <div class="text-center">
+              <span class="text-xs font-medium uppercase tracking-wide {pomodoroMode === 'work' ? 'text-gray-900' : 'text-emerald-600'}">
+                {pomodoroMode === 'work' ? 'Focus time' : 'Break'}
+              </span>
+            </div>
+
+            <div class="relative flex items-center justify-center w-48 h-48">
+              <svg class="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="none" stroke="#e6e6e6" stroke-width="4" />
+                <circle
+                  cx="50" cy="50" r="45" fill="none"
+                  stroke={pomodoroMode === 'work' ? '#111827' : '#10b981'}
+                  stroke-width="4"
+                  stroke-linecap="round"
+                  stroke-dasharray={2 * Math.PI * 45}
+                  stroke-dashoffset={2 * Math.PI * 45 * (1 - pomodoroSeconds / ((pomodoroMode === 'work' ? pomodoroMinutes : breakMinutes) * 60))}
+                  class="transition-all duration-1000 ease-linear"
+                />
+              </svg>
+              <span class="text-4xl font-bold text-gray-900 tabular-nums">{formatTime(pomodoroSeconds)}</span>
+            </div>
+
+            <div class="flex items-center gap-3">
+              {#if pomodoroRunning}
+                <button
+                  class="flex items-center justify-center w-12 h-12 rounded-full border border-[#e6e6e6] bg-white text-gray-900 hover:bg-gray-50 transition"
+                  on:click={pausePomodoro}
+                  aria-label="Pause"
+                >
+                  <Pause size={20} weight="bold" />
+                </button>
+              {:else}
+                <button
+                  class="flex items-center justify-center w-12 h-12 rounded-full border border-gray-900 bg-gray-900 text-white hover:bg-gray-800 transition"
+                  on:click={startPomodoro}
+                  aria-label="Start"
+                >
+                  <Play size={20} weight="bold" />
+                </button>
+              {/if}
+              <button
+                class="flex items-center justify-center w-10 h-10 rounded-full border border-[#e6e6e6] bg-white text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition"
+                on:click={resetPomodoro}
+                aria-label="Reset"
+              >
+                <ArrowCounterClockwise size={16} weight="bold" />
+              </button>
+            </div>
+
+            <div class="flex items-center gap-4 text-xs text-gray-500">
+              <div class="flex items-center gap-1.5">
+                <label for="pomo-work">Work</label>
+                <input id="pomo-work" type="number" min="1" max="60" class="w-12 px-1.5 py-1 border border-[#e6e6e6] rounded text-center text-xs text-gray-900 outline-none focus:border-gray-900" bind:value={pomodoroMinutes} on:change={() => { if (!pomodoroRunning && pomodoroMode === 'work') pomodoroSeconds = pomodoroMinutes * 60; }} />
+                <span>min</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <label for="pomo-break">Break</label>
+                <input id="pomo-break" type="number" min="1" max="30" class="w-12 px-1.5 py-1 border border-[#e6e6e6] rounded text-center text-xs text-gray-900 outline-none focus:border-gray-900" bind:value={breakMinutes} on:change={() => { if (!pomodoroRunning && pomodoroMode === 'break') pomodoroSeconds = breakMinutes * 60; }} />
+                <span>min</span>
+              </div>
+            </div>
+
+            {#if pomodoroCount > 0}
+              <p class="text-xs text-gray-500">{pomodoroCount} session{pomodoroCount > 1 ? 's' : ''} completed</p>
+            {/if}
+
+            {#if typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default'}
+              <button
+                class="text-xs text-gray-500 hover:text-gray-900 underline bg-transparent border-none p-0"
+                on:click={requestNotificationPermission}
+              >Enable notifications</button>
+            {:else if typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted'}
+              <span class="text-[10px] text-gray-400">Notifications enabled</span>
+            {/if}
           </div>
         {/if}
-
-        <div class="space-y-2">
-          <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Labels</h4>
-          {#if detailTags.length > 0}
-            <div class="flex flex-wrap gap-1.5">
-              {#each detailTags as tag, i}
-                <span
-                  class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
-                  style="background-color: {tag.color}1a; color: {tag.color}"
-                >
-                  {tag.label}
-                  <button
-                    class="text-inherit hover:text-red-600"
-                    on:click={() => deleteTag(i)}
-                    aria-label="Remove label"
-                  >
-                    <X size={10} weight="bold" />
-                  </button>
-                </span>
-              {/each}
-            </div>
-          {/if}
-          <div class="flex gap-2">
-            <input
-              class="flex-1 px-3 py-1.5 border border-[#e6e6e6] rounded-lg text-sm text-gray-900 outline-none focus:border-gray-900"
-              bind:value={newTagLabel}
-              placeholder="Label name"
-              on:keydown={(e) => e.key === 'Enter' && addTag()}
-            />
-            <button class="px-3 py-1.5 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800" on:click={addTag}>Add</button>
-          </div>
-          <div class="flex flex-wrap items-center gap-1.5">
-            {#each TAG_COLORS as c}
-              <button
-                type="button"
-                class="w-6 h-6 rounded-full border-2 transition {newTagColor === c ? 'border-gray-900' : 'border-transparent'}"
-                style="background-color: {c};"
-                on:click={() => newTagColor = c}
-                aria-label="Select color"
-              ></button>
-            {/each}
-          </div>
-        </div>
       </div>
 
       <div class="flex items-center justify-between px-5 py-4 border-t border-[#e6e6e6] shrink-0">
-        <button class="px-3 py-1.5 rounded-lg bg-transparent text-sm text-red-600 hover:bg-red-50" on:click={deleteDetail}>
+        <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 bg-transparent text-sm font-medium text-red-600 hover:bg-red-50" on:click={deleteDetail}>
+          <Trash size={14} weight="bold" />
           Delete
         </button>
         <div class="flex items-center gap-3">
@@ -810,6 +1226,19 @@
     <div class="flex gap-2 justify-end">
       <button class="secondary" on:click={cancelClose}>Keep editing</button>
       <button on:click={confirmClose}>Close without saving</button>
+    </div>
+  </Modal>
+{/if}
+
+{#if showDeleteConfirm}
+  <Modal title="Delete card" on:close={cancelDelete}>
+    <p class="text-sm text-gray-700 mb-4">Are you sure you want to delete this card? This action cannot be undone.</p>
+    <div class="flex gap-2 justify-end">
+      <button class="secondary" on:click={cancelDelete}>Cancel</button>
+      <button class="inline-flex items-center gap-1.5 bg-red-600 text-white hover:bg-red-700" on:click={confirmDelete}>
+        <Trash size={14} weight="bold" />
+        Delete
+      </button>
     </div>
   </Modal>
 {/if}
@@ -840,6 +1269,37 @@
       <div class="flex gap-2 justify-end">
         <button class="secondary" on:click={closeLinkModal}>Cancel</button>
         <button on:click={saveLink}>{editingLinkIndex >= 0 ? 'Save' : 'Add'}</button>
+      </div>
+    </div>
+  </Modal>
+{/if}
+
+{#if attachmentModalOpen}
+  <Modal title={editingAttachmentIndex >= 0 ? 'Edit attachment' : 'Add attachment'} on:close={closeAttachmentModal}>
+    <div class="space-y-3">
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide" for="attachment-url">File URL</label>
+        <input
+          id="attachment-url"
+          class="w-full px-3 py-1.5 border border-[#e6e6e6] rounded-lg text-sm text-gray-900 outline-none focus:border-gray-900"
+          bind:value={attachmentUrl}
+          placeholder="https://example.com/file.pdf"
+          on:keydown={(e) => e.key === 'Enter' && saveAttachment()}
+        />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide" for="attachment-name">Name</label>
+        <input
+          id="attachment-name"
+          class="w-full px-3 py-1.5 border border-[#e6e6e6] rounded-lg text-sm text-gray-900 outline-none focus:border-gray-900"
+          bind:value={attachmentName}
+          placeholder="File name"
+          on:keydown={(e) => e.key === 'Enter' && saveAttachment()}
+        />
+      </div>
+      <div class="flex gap-2 justify-end">
+        <button class="secondary" on:click={closeAttachmentModal}>Cancel</button>
+        <button on:click={saveAttachment}>{editingAttachmentIndex >= 0 ? 'Save' : 'Add'}</button>
       </div>
     </div>
   </Modal>
