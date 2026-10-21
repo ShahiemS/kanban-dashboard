@@ -108,12 +108,26 @@ textarea::placeholder {
   @apply m-0 text-[var(--danger)] text-[0.8rem];
 }
 
-button.auth-switch {
-  @apply bg-transparent border-transparent text-[var(--text-muted)] font-normal text-[0.8125rem];
+button.auth-switch,
+.auth-switch {
+  @apply bg-transparent border-transparent text-[var(--text-muted)] font-normal text-[0.8125rem] no-underline;
 }
 
-button.auth-switch:hover {
+button.auth-switch:hover,
+.auth-switch:hover {
   @apply bg-transparent border-transparent text-[var(--text)] underline;
+}
+
+.login-notice {
+  @apply m-0 text-[#16a34a] text-[0.8rem];
+}
+
+a.login-link-btn {
+  @apply inline-flex items-center justify-center gap-[0.4rem] cursor-pointer py-[0.4rem] px-3 border border-solid border-[var(--accent)] rounded-lg bg-[var(--accent)] text-white text-sm font-medium leading-5 no-underline;
+}
+
+a.login-link-btn:hover {
+  @apply bg-[#333333] border-[#333333];
 }
 
 button.logout {

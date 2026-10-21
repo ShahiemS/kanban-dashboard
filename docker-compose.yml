@@ -29,6 +29,9 @@ services:
       DB_USER: ${DB_USER:-kanban}
       DB_PASSWORD: ${DB_PASSWORD:-kanban}
       DB_NAME: ${DB_NAME:-kanban}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: "${EMAIL_FROM:-Werkethiek.nl <noreply@werkethiek.nl>}"
+      APP_URL: ${APP_URL:-http://localhost:8080}
     ports:
       - "3000:3000"
     depends_on:

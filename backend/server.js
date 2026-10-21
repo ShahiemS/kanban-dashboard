@@ -1,8 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { scryptSync, randomBytes, timingSafeEqual } from 'crypto';
+import { scryptSync, randomBytes, timingSafeEqual, createHash } from 'crypto';
 import pool from './db.js';
+import { sendResetEmail } from './mailer.js';
 
 dotenv.config();
 
@@ -11,6 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
+const APP_URL = (process.env.APP_URL || 'http://localhost:8080').replace(/\/$/, '');
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // ---------- Auth helpers ----------
@@ -115,6 +117,48 @@ app.post('/api/auth/login', async (req, res) => {
   await pool.query('DELETE FROM sessions WHERE expires_at < now()');
   const token = await createSession(user.id);
   res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
+});
+
+// Always answers 200 so the endpoint can't be used to enumerate accounts;
+// the email is only sent when a matching user actually exists.
+app.post('/api/auth/forgot-password', async (req, res) => {
+  res.json({ ok: true });
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    if (!EMAIL_RE.test(email)) return;
+    const { rows } = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (!rows[0]) return;
+    const token = randomBytes(32).toString('hex');
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    await pool.query('DELETE FROM password_resets WHERE user_id = $1', [rows[0].id]);
+    await pool.query(
+      "INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '1 hour')",
+      [rows[0].id, tokenHash]
+    );
+    await sendResetEmail(email, `${APP_URL}/#/reset-password/${token}`);
+  } catch (err) {
+    console.error('[auth] forgot-password failed', err);
+  }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  const { token = '', password = '' } = req.body || {};
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
+  const tokenHash = createHash('sha256').update(String(token)).digest('hex');
+  const { rows } = await pool.query(
+    'SELECT id, user_id FROM password_resets WHERE token_hash = $1 AND expires_at > now()',
+    [tokenHash]
+  );
+  const reset = rows[0];
+  if (!reset) {
+    return res.status(400).json({ error: 'This reset link is invalid or has expired' });
+  }
+  await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hashPassword(password), reset.user_id]);
+  await pool.query('DELETE FROM password_resets WHERE user_id = $1', [reset.user_id]);
+  await pool.query('DELETE FROM sessions WHERE user_id = $1', [reset.user_id]);
+  res.json({ ok: true });
 });
 
 // ---------- Auth middleware ----------
