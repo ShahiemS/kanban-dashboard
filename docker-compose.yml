@@ -31,7 +31,7 @@ services:
       DB_NAME: ${DB_NAME:-kanban}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: "${EMAIL_FROM:-Werkethiek.nl <noreply@werkethiek.nl>}"
-      APP_URL: ${APP_URL:-http://localhost:8080}
+      APP_URL: ${APP_URL:-http://localhost}
     # No public port mapping — nginx proxies /api over the
     # internal compose network only.
     depends_on:
@@ -45,7 +45,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "8080:80"
+      - "80:80"
     depends_on:
       - backend
     restart: unless-stopped

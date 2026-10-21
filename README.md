@@ -42,7 +42,7 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-The app will be available on port `8080` (frontend) and the API on port `3000`.
+The app will be available on port `80` (frontend) and the API on port `3000`. Set `APP_URL` in `.env` to your public URL (e.g. `http://werkethiek.nl`) so password-reset links point to the right host.
 
 ## VPS auto-deploy
 
