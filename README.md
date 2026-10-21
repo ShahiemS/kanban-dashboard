@@ -1,4 +1,4 @@
-# Kanban Board
+# Werkethiek.nl
 
 A Trello-like kanban board built with:
 
@@ -26,13 +26,14 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173).
 
-## Demo password
+## Accounts
 
-This dashboard is gated behind a single shared password (not a real user
-auth system — just enough to keep it from being wide open while it's public).
-Set it via the `DEMO_PASSWORD` env var in `backend/.env` (defaults to
-`demo1234` if unset). The page also sets `noindex, nofollow` so it won't be
-picked up by search engines.
+The app has real user accounts: sign up with a name, email, and password,
+then log in. Passwords are hashed with scrypt and sessions are opaque
+bearer tokens stored in the `sessions` table (30-day expiry). Each user's
+workspaces, boards, columns, and cards are scoped to their account.
+The page also sets `noindex, nofollow` so it won't be picked up by search
+engines.
 
 ## Run with Docker
 

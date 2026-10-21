@@ -108,6 +108,14 @@ textarea::placeholder {
   @apply m-0 text-[var(--danger)] text-[0.8rem];
 }
 
+button.auth-switch {
+  @apply bg-transparent border-transparent text-[var(--text-muted)] font-normal text-[0.8125rem];
+}
+
+button.auth-switch:hover {
+  @apply bg-transparent border-transparent text-[var(--text)] underline;
+}
+
 button.logout {
   @apply bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)] font-medium;
 }

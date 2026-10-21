@@ -5,7 +5,7 @@
   import BoardsList from './lib/BoardsList.svelte';
   import BoardView from './lib/BoardView.svelte';
   import Login from './lib/Login.svelte';
-  import { isAuthenticated, installAuthFetch, clearStoredPassword } from './lib/auth.js';
+  import { isAuthenticated, installAuthFetch, clearToken } from './lib/auth.js';
 
   installAuthFetch();
 
@@ -24,7 +24,8 @@
   }
 
   function logout() {
-    clearStoredPassword();
+    fetch(`${API}/api/auth/logout`, { method: 'POST' }).catch(() => {});
+    clearToken();
     authenticated = false;
   }
 </script>

@@ -182,7 +182,7 @@
 </script>
 
 <svelte:head>
-  <title>{board ? `${board.title} | Kanban Board` : 'Kanban Board'}</title>
+  <title>{board ? `${board.title} | Werkethiek.nl` : 'Werkethiek.nl'}</title>
 </svelte:head>
 
 <div class="flex h-screen">
