@@ -1,4 +1,5 @@
 <script>
+  import { onMount, tick } from 'svelte';
   import { setToken } from './auth.js';
 
   export let api;
@@ -11,14 +12,19 @@
   let error = '';
   let notice = '';
   let loading = false;
+  let formEl = null;
 
   $: isSignup = mode === 'signup';
   $: isForgot = mode === 'forgot';
 
-  function switchMode(next) {
+  onMount(() => formEl?.querySelector('input')?.focus());
+
+  async function switchMode(next) {
     mode = next;
     error = '';
     notice = '';
+    await tick();
+    formEl?.querySelector('input')?.focus();
   }
 
   async function submit() {
@@ -62,7 +68,7 @@
 </script>
 
 <div class="login-screen">
-  <form class="login-card" on:submit|preventDefault={submit}>
+  <form class="login-card" bind:this={formEl} on:submit|preventDefault={submit}>
     <img src="/favicon.svg" alt="Werkethiek.nl" class="w-16 h-16 mx-auto mb-4" />
     <h1>Werkethiek.nl</h1>
     <p class="login-subtitle">

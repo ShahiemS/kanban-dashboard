@@ -1,4 +1,6 @@
 <script>
+  import { onMount } from 'svelte';
+
   export let api;
   export let token = '';
 
@@ -7,6 +9,9 @@
   let error = '';
   let done = false;
   let loading = false;
+  let formEl = null;
+
+  onMount(() => formEl?.querySelector('input')?.focus());
 
   async function submit() {
     if (!password || loading) return;
@@ -38,7 +43,7 @@
 </script>
 
 <div class="login-screen">
-  <form class="login-card" on:submit|preventDefault={submit}>
+  <form class="login-card" bind:this={formEl} on:submit|preventDefault={submit}>
     <img src="/favicon.svg" alt="Werkethiek.nl" class="w-16 h-16 mx-auto mb-4" />
     <h1>Werkethiek.nl</h1>
 
