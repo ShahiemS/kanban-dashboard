@@ -1,0 +1,11 @@
+{
+	acme_ca https://acme-v02.api.letsencrypt.org/directory
+}
+
+werkethiek.nl {
+	reverse_proxy frontend:80
+}
+
+www.werkethiek.nl {
+	redir https://werkethiek.nl{uri} permanent
+}
