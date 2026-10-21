@@ -62,6 +62,29 @@
 
   const TAG_COLORS = ['#0079bf', '#61bd4f', '#f2d600', '#ff9f1a', '#eb5a46', '#c377e0', '#00c2e0', '#344563'];
 
+  // Card descriptions are stored as rich-text HTML (the contenteditable
+  // editor). Strip everything outside the allowlist — including all
+  // attributes — so stored markup can't inject scripts or handlers.
+  const DESCRIPTION_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'H2', 'UL', 'OL', 'LI', 'BR', 'P', 'DIV', 'FONT']);
+  function sanitizeHtml(html) {
+    const doc = new DOMParser().parseFromString(html || '', 'text/html');
+    for (const el of [...doc.body.querySelectorAll('*')]) {
+      if (!DESCRIPTION_TAGS.has(el.tagName)) {
+        el.replaceWith(...el.childNodes);
+        continue;
+      }
+      for (const attr of [...el.attributes]) el.removeAttribute(attr.name);
+    }
+    return doc.body.innerHTML;
+  }
+
+  // Only web/mail links — keeps javascript: and data: URLs out of hrefs.
+  function safeUrl(url) {
+    const u = String(url || '').trim();
+    if (/^(https?:|mailto:)/i.test(u)) return u;
+    return `https://${u.replace(/^[a-z][a-z0-9+.-]*:/i, '')}`;
+  }
+
   function focusOnMount(node) {
     node.focus();
     node.select();
@@ -406,7 +429,7 @@
     closeMenus();
     detailOpen = true;
     detailTitle = card.title;
-    detailDescription = card.description || '';
+    detailDescription = sanitizeHtml(card.description || '');
     const existing = Array.isArray(meta.checklists) ? meta.checklists : (Array.isArray(meta.subtasks) ? [{ title: 'Checklist', items: meta.subtasks }] : []);
     checklists = existing.map(list => ({ ...list, items: Array.isArray(list.items) ? list.items : [] }));
     detailTags = Array.isArray(meta.tags) ? meta.tags : (meta.tag ? [{ label: meta.tag, color: meta.tag_color || '#0079bf' }] : []);
@@ -420,7 +443,7 @@
   async function saveDetail() {
     const nextMeta = { ...meta, checklists: checklists.map(list => ({ title: list.title, items: list.items.map(i => ({ text: i.text, done: i.done })) })), tags: detailTags };
     try {
-      await saveCard({ title: detailTitle, description: detailDescription, meta: nextMeta });
+      await saveCard({ title: detailTitle, description: sanitizeHtml(detailDescription), meta: nextMeta });
       detailOpen = false;
     } catch (err) {
       console.error('[Card] save detail failed', err);
@@ -668,7 +691,7 @@
     <div class="mt-2 flex flex-wrap items-center gap-3">
       {#each links as link}
         <a
-          href={link.url}
+          href={safeUrl(link.url)}
           target="_blank"
           rel="noopener noreferrer"
           class="inline-flex max-w-[130px] items-center gap-1 text-xs text-blue-600 hover:underline"
@@ -972,7 +995,7 @@
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-gray-400">
                     <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
                   </svg>
-                  <a href={att.url} target="_blank" rel="noopener noreferrer" class="flex-1 text-xs text-gray-900 hover:underline truncate">{att.name}</a>
+                  <a href={safeUrl(att.url)} target="_blank" rel="noopener noreferrer" class="flex-1 text-xs text-gray-900 hover:underline truncate">{att.name}</a>
                   <button class="p-0 bg-transparent border-none text-gray-400 hover:text-gray-700" on:click={() => openEditAttachment(i)} aria-label="Edit attachment">
                     <PencilSimple size={12} />
                   </button>
@@ -996,7 +1019,7 @@
                       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
                       <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
                     </svg>
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" class="max-w-[120px] truncate text-gray-900 hover:underline no-underline">{link.label}</a>
+                    <a href={safeUrl(link.url)} target="_blank" rel="noopener noreferrer" class="max-w-[120px] truncate text-gray-900 hover:underline no-underline">{link.label}</a>
                     <button class="flex items-center justify-center p-0 bg-transparent border-none text-gray-400 hover:text-gray-900 transition" on:click={() => openEditLink(i)} aria-label="Edit link">
                       <PencilSimple size={11} />
                     </button>

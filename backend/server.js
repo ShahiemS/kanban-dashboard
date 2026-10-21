@@ -14,6 +14,34 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 const APP_URL = (process.env.APP_URL || 'http://localhost:8080').replace(/\/$/, '');
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD_LEN = 8;
+
+// Express 4 doesn't forward async handler rejections to an error
+// middleware — without these, one failed query kills the process.
+process.on('unhandledRejection', (err) => console.error('[server] unhandled rejection', err));
+process.on('uncaughtException', (err) => console.error('[server] uncaught exception', err));
+
+// ---------- Rate limiting (in-memory, per-IP) ----------
+
+function rateLimit({ windowMs, max }) {
+  const hits = new Map();
+  return (req, res, next) => {
+    const key = req.ip;
+    const now = Date.now();
+    let rec = hits.get(key);
+    if (!rec || rec.resetAt < now) {
+      rec = { count: 0, resetAt: now + windowMs };
+      hits.set(key, rec);
+    }
+    if (++rec.count > max) {
+      return res.status(429).json({ error: 'Too many attempts. Please try again later.' });
+    }
+    next();
+  };
+}
+
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
+const resetLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5 });
 
 // ---------- Auth helpers ----------
 
@@ -38,6 +66,10 @@ async function createSession(userId) {
   );
   return token;
 }
+
+// Compared against when the email isn't registered, so login timing
+// doesn't reveal whether an account exists.
+const DUMMY_HASH = hashPassword(randomBytes(8).toString('hex'));
 
 function bearerToken(req) {
   const header = req.get('authorization') || '';
@@ -78,14 +110,14 @@ async function seedUserData(userId) {
 
 // ---------- Auth routes (public) ----------
 
-app.post('/api/auth/signup', async (req, res) => {
+app.post('/api/auth/signup', authLimiter, async (req, res) => {
   const { name = '', email = '', password = '' } = req.body || {};
   const normalizedEmail = String(email).trim().toLowerCase();
   if (!EMAIL_RE.test(normalizedEmail)) {
     return res.status(400).json({ error: 'Enter a valid email address' });
   }
-  if (password.length < 6) {
-    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  if (password.length < MIN_PASSWORD_LEN) {
+    return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LEN} characters` });
   }
   try {
     const { rows } = await pool.query(
@@ -104,14 +136,14 @@ app.post('/api/auth/signup', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authLimiter, async (req, res) => {
   const { email = '', password = '' } = req.body || {};
   const { rows } = await pool.query(
     'SELECT id, email, name, password_hash FROM users WHERE email = $1',
     [String(email).trim().toLowerCase()]
   );
   const user = rows[0];
-  if (!user || !verifyPassword(password, user.password_hash)) {
+  if (!verifyPassword(password, user?.password_hash || DUMMY_HASH) || !user) {
     return res.status(401).json({ error: 'Invalid email or password' });
   }
   await pool.query('DELETE FROM sessions WHERE expires_at < now()');
@@ -121,7 +153,7 @@ app.post('/api/auth/login', async (req, res) => {
 
 // Always answers 200 so the endpoint can't be used to enumerate accounts;
 // the email is only sent when a matching user actually exists.
-app.post('/api/auth/forgot-password', async (req, res) => {
+app.post('/api/auth/forgot-password', resetLimiter, async (req, res) => {
   res.json({ ok: true });
   try {
     const email = String(req.body?.email || '').trim().toLowerCase();
@@ -141,10 +173,10 @@ app.post('/api/auth/forgot-password', async (req, res) => {
   }
 });
 
-app.post('/api/auth/reset-password', async (req, res) => {
+app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
   const { token = '', password = '' } = req.body || {};
-  if (password.length < 6) {
-    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  if (password.length < MIN_PASSWORD_LEN) {
+    return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LEN} characters` });
   }
   const tokenHash = createHash('sha256').update(String(token)).digest('hex');
   const { rows } = await pool.query(

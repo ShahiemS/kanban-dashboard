@@ -21,6 +21,16 @@ CREATE TABLE IF NOT EXISTS password_resets (
   expires_at TIMESTAMPTZ NOT NULL
 );
 
+-- Postgres does not index foreign keys automatically; without these,
+-- every lookup joins via sequential scan.
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_resets_hash ON password_resets(token_hash);
+CREATE INDEX IF NOT EXISTS idx_resets_user ON password_resets(user_id);
+CREATE INDEX IF NOT EXISTS idx_workspaces_user ON workspaces(user_id);
+CREATE INDEX IF NOT EXISTS idx_boards_workspace ON boards(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_columns_board ON columns(board_id);
+CREATE INDEX IF NOT EXISTS idx_cards_column ON cards(column_id);
+
 CREATE TABLE IF NOT EXISTS workspaces (
   id SERIAL PRIMARY KEY,
   title TEXT NOT NULL

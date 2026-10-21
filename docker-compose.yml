@@ -9,8 +9,8 @@ services:
       POSTGRES_DB: ${DB_NAME:-kanban}
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    # No public port mapping — backend reaches Postgres over the
+    # internal compose network only.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-kanban} -d $${POSTGRES_DB:-kanban}"]
       interval: 5s
@@ -32,8 +32,8 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: "${EMAIL_FROM:-Werkethiek.nl <noreply@werkethiek.nl>}"
       APP_URL: ${APP_URL:-http://localhost:8080}
-    ports:
-      - "3000:3000"
+    # No public port mapping — nginx proxies /api over the
+    # internal compose network only.
     depends_on:
       db:
         condition: service_healthy
