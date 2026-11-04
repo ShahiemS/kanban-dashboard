@@ -1,6 +1,8 @@
 <script>
   import { onMount, tick } from 'svelte';
   import { push } from 'svelte-spa-router';
+  import { flip } from 'svelte/animate';
+  import { gridDropIndex } from './dnd.js';
 
   export let api;
 
@@ -107,6 +109,61 @@
   function toggleMenu(workspaceId) {
     openMenuId = openMenuId === workspaceId ? null : workspaceId;
   }
+
+  let gridEl = null;
+  let dropIndex = null;
+  let draggingId = null;
+
+  function onWsDragStart(e, workspace) {
+    draggingId = workspace.id;
+    e.dataTransfer.setData('workspaceId', workspace.id);
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function onWsDragEnd() {
+    draggingId = null;
+    dropIndex = null;
+  }
+
+  function onGridDragOver(e) {
+    if (!e.dataTransfer.types.includes('workspaceid')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    dropIndex = gridDropIndex(gridEl, '.ws-tile', e.clientX, e.clientY);
+  }
+
+  function onGridDragLeave(e) {
+    if (gridEl && !gridEl.contains(e.relatedTarget)) dropIndex = null;
+  }
+
+  async function onGridDrop(e) {
+    if (!e.dataTransfer.types.includes('workspaceid')) return;
+    e.preventDefault();
+    const id = parseInt(e.dataTransfer.getData('workspaceId'), 10);
+    const idx = dropIndex ?? workspaces.length;
+    dropIndex = null;
+    draggingId = null;
+    const from = workspaces.findIndex(w => w.id === id);
+    if (from === -1) return;
+    let to = idx;
+    if (from < idx) to = idx - 1;
+    if (from === to) return;
+    const next = [...workspaces];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    const previous = workspaces;
+    workspaces = next;
+    try {
+      await fetch(`${api}/api/workspaces/reorder`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: next.map(w => w.id) })
+      });
+    } catch (err) {
+      console.error('[WorkspaceList] reorder failed', err);
+      workspaces = previous;
+    }
+  }
 </script>
 
 <header class="app-header">
@@ -123,9 +180,22 @@
 {:else if workspaces.length === 0}
   <p class="boards-empty">No workspaces yet. Create one to get started.</p>
 {:else}
-  <div class="boards-grid">
-    {#each workspaces as workspace (workspace.id)}
-      <div class="group relative flex flex-col min-h-[140px] p-3 bg-white bg-[radial-gradient(circle,#e5e5e5_1px,transparent_1px)] bg-[length:12px_12px] rounded-[10px] border border-[#e6e6e6] cursor-pointer transition hover:border-[#d4d4d4] hover:bg-[#fafafa]">
+  <div class="boards-grid" bind:this={gridEl} on:dragover={onGridDragOver} on:dragleave={onGridDragLeave} on:drop={onGridDrop}>
+    {#each workspaces as workspace, i (workspace.id)}
+      <div
+        class="ws-tile group relative flex flex-col min-h-[140px] p-3 bg-white bg-[radial-gradient(circle,#e5e5e5_1px,transparent_1px)] bg-[length:12px_12px] rounded-[10px] border border-[#e6e6e6] cursor-pointer transition hover:border-[#d4d4d4] hover:bg-[#fafafa]"
+        class:opacity-40={draggingId === workspace.id}
+        draggable={editingWorkspaceId !== workspace.id}
+        on:dragstart={(e) => onWsDragStart(e, workspace)}
+        on:dragend={onWsDragEnd}
+        animate:flip={{ duration: 200 }}
+      >
+        {#if dropIndex === i}
+          <div class="drop-bar-v"></div>
+        {/if}
+        {#if dropIndex === workspaces.length && i === workspaces.length - 1}
+          <div class="drop-bar-v drop-bar-end"></div>
+        {/if}
         {#if editingWorkspaceId !== workspace.id}
           <div class="absolute top-2 right-2">
             <div class="relative">

@@ -6,6 +6,16 @@ const schema = fs.readFileSync('./init.sql', 'utf8');
 await pool.query(schema);
 console.log('Migrations applied');
 
+// Normalize ordering so drag-to-reorder has contiguous positions to work with.
+await pool.query(`WITH s AS (
+  SELECT id, row_number() OVER (PARTITION BY user_id ORDER BY position, id) - 1 AS rn
+  FROM workspaces
+) UPDATE workspaces w SET position = s.rn FROM s WHERE w.id = s.id`);
+await pool.query(`WITH s AS (
+  SELECT id, row_number() OVER (PARTITION BY workspace_id ORDER BY position, id) - 1 AS rn
+  FROM boards
+) UPDATE boards b SET position = s.rn FROM s WHERE b.id = s.id`);
+
 const { rows: workspaceCount } = await pool.query('SELECT COUNT(*) FROM workspaces');
 if (parseInt(workspaceCount[0].count, 10) === 0) {
   await pool.query(`INSERT INTO workspaces (title) VALUES ('Default')`);

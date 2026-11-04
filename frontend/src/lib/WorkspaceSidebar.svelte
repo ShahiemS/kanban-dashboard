@@ -1,6 +1,8 @@
 <script>
   import { onMount, tick, createEventDispatcher } from 'svelte';
   import { link } from 'svelte-spa-router';
+  import { flip } from 'svelte/animate';
+  import { gridDropIndex } from './dnd.js';
   import { DotsThree, CaretLeft, List, Buildings, Kanban, House, X, SignOut } from 'phosphor-svelte';
   import { workspaces } from './workspaceStore.js';
 
@@ -201,6 +203,63 @@
     openMenuId = openMenuId === workspaceId ? null : workspaceId;
   }
 
+  let wsListEl = null;
+  let wsDropIndex = null;
+  let wsDraggingId = null;
+
+  function onWsDragStart(e, workspace) {
+    wsDraggingId = workspace.id;
+    e.dataTransfer.setData('workspaceId', workspace.id);
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function onWsDragEnd() {
+    wsDraggingId = null;
+    wsDropIndex = null;
+  }
+
+  function onWsListDragOver(e) {
+    if (searchQuery) return;
+    if (!e.dataTransfer.types.includes('workspaceid')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    wsDropIndex = gridDropIndex(wsListEl, '.ws-item', e.clientX, e.clientY);
+  }
+
+  function onWsListDragLeave(e) {
+    if (wsListEl && !wsListEl.contains(e.relatedTarget)) wsDropIndex = null;
+  }
+
+  async function onWsListDrop(e) {
+    if (searchQuery) return;
+    if (!e.dataTransfer.types.includes('workspaceid')) return;
+    e.preventDefault();
+    const id = parseInt(e.dataTransfer.getData('workspaceId'), 10);
+    const idx = wsDropIndex ?? $workspaces.length;
+    wsDropIndex = null;
+    wsDraggingId = null;
+    const from = $workspaces.findIndex(w => w.id === id);
+    if (from === -1) return;
+    let to = idx;
+    if (from < idx) to = idx - 1;
+    if (from === to) return;
+    const next = [...$workspaces];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    const previous = $workspaces;
+    workspaces.set(next);
+    try {
+      await fetch(`${api}/api/workspaces/reorder`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: next.map(w => w.id) })
+      });
+    } catch (err) {
+      console.error('[WorkspaceSidebar] reorder failed', err);
+      workspaces.set(previous);
+    }
+  }
+
   function closeMenu() {
     openMenuId = null;
     showUserMenu = false;
@@ -317,7 +376,7 @@
     </a>
   </div>
   {#if !collapsed}
-  <div class="flex-1 overflow-y-auto p-2 space-y-2">
+  <div class="flex-1 overflow-y-auto p-2 space-y-2" bind:this={wsListEl} on:dragover={onWsListDragOver} on:dragleave={onWsListDragLeave} on:drop={onWsListDrop}>
     {#if loading}
       <p class="px-3 py-2 text-sm text-gray-500">Loading…</p>
     {:else if error}
@@ -329,8 +388,21 @@
         if (w.title.toLowerCase().includes(q)) return true;
         const boards = workspaceBoards[w.id] || [];
         return boards.some(b => b.title.toLowerCase().includes(q));
-      }) as workspace (workspace.id)}
-        <div class="relative group">
+      }) as workspace, i (workspace.id)}
+        <div
+          class="ws-item relative group"
+          class:opacity-40={wsDraggingId === workspace.id}
+          draggable={editingWorkspaceId !== workspace.id}
+          on:dragstart={(e) => onWsDragStart(e, workspace)}
+          on:dragend={onWsDragEnd}
+          animate:flip={{ duration: 200 }}
+        >
+          {#if wsDropIndex === i}
+            <div class="drop-bar-h"></div>
+          {/if}
+          {#if wsDropIndex === $workspaces.length && i === $workspaces.length - 1}
+            <div class="drop-bar-h" style="top: auto; bottom: -5px;"></div>
+          {/if}
           {#if editingWorkspaceId === workspace.id}
             <div class="px-2 py-1.5">
               <input

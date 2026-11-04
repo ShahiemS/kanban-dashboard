@@ -1,6 +1,8 @@
 <script>
   import { tick, onMount } from 'svelte';
   import { link, push } from 'svelte-spa-router';
+  import { flip } from 'svelte/animate';
+  import { gridDropIndex } from './dnd.js';
   import { Star, DotsThree } from 'phosphor-svelte';
   import WorkspaceSidebar from './WorkspaceSidebar.svelte';
   import Loading from './Loading.svelte';
@@ -187,6 +189,61 @@
     openMenuId = openMenuId === boardId ? null : boardId;
   }
 
+  let gridEl = null;
+  let dropIndex = null;
+  let draggingId = null;
+
+  function onBoardDragStart(e, board) {
+    draggingId = board.id;
+    e.dataTransfer.setData('boardDragId', board.id);
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function onBoardDragEnd() {
+    draggingId = null;
+    dropIndex = null;
+  }
+
+  function onGridDragOver(e) {
+    if (!e.dataTransfer.types.includes('boarddragid')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    dropIndex = gridDropIndex(gridEl, '.board-tile', e.clientX, e.clientY);
+  }
+
+  function onGridDragLeave(e) {
+    if (gridEl && !gridEl.contains(e.relatedTarget)) dropIndex = null;
+  }
+
+  async function onGridDrop(e) {
+    if (!e.dataTransfer.types.includes('boarddragid')) return;
+    e.preventDefault();
+    const id = parseInt(e.dataTransfer.getData('boardDragId'), 10);
+    const idx = dropIndex ?? boards.length;
+    dropIndex = null;
+    draggingId = null;
+    const from = boards.findIndex(b => b.id === id);
+    if (from === -1) return;
+    let to = idx;
+    if (from < idx) to = idx - 1;
+    if (from === to) return;
+    const next = [...boards];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    const previous = boards;
+    boards = next;
+    try {
+      await fetch(`${api}/api/boards/reorder`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: next.map(b => b.id) })
+      });
+    } catch (err) {
+      console.error('[BoardsList] reorder failed', err);
+      boards = previous;
+    }
+  }
+
   function openBoardContextMenu(e, board) {
     e.preventDefault();
     contextMenu = { board, x: e.clientX, y: e.clientY };
@@ -320,13 +377,24 @@
         {#if !showArchived && boards.length === 0}
           <p class="boards-empty mb-4">No boards in this workspace.</p>
         {/if}
-        <div class="boards-grid">
-          {#each boards as board (board.id)}
+        <div class="boards-grid" bind:this={gridEl} on:dragover={onGridDragOver} on:dragleave={onGridDragLeave} on:drop={onGridDrop}>
+          {#each boards as board, i (board.id)}
             <div
-              class="group relative flex flex-col min-h-[140px] p-3 bg-white bg-[radial-gradient(circle,#e5e5e5_1px,transparent_1px)] bg-[length:12px_12px] rounded-[10px] border border-[#e6e6e6] cursor-pointer transition hover:border-[#d4d4d4] hover:bg-[#fafafa]"
+              class="board-tile group relative flex flex-col min-h-[140px] p-3 bg-white bg-[radial-gradient(circle,#e5e5e5_1px,transparent_1px)] bg-[length:12px_12px] rounded-[10px] border border-[#e6e6e6] cursor-pointer transition hover:border-[#d4d4d4] hover:bg-[#fafafa]"
+              class:opacity-40={draggingId === board.id}
               role="listitem"
+              draggable={editingBoardId !== board.id}
+              on:dragstart={(e) => onBoardDragStart(e, board)}
+              on:dragend={onBoardDragEnd}
+              animate:flip={{ duration: 200 }}
               on:contextmenu|preventDefault={(e) => openBoardContextMenu(e, board)}
             >
+              {#if dropIndex === i}
+                <div class="drop-bar-v"></div>
+              {/if}
+              {#if dropIndex === boards.length && i === boards.length - 1}
+                <div class="drop-bar-v drop-bar-end"></div>
+              {/if}
               {#if editingBoardId !== board.id}
                 <div class="absolute top-2 right-2 flex items-center gap-1">
                   {#if !showArchived}

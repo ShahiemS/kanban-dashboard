@@ -362,7 +362,7 @@ async function ownsCard(userId, id) {
 // Workspaces
 app.get('/api/workspaces', async (req, res) => {
   const { rows } = await pool.query(
-    'SELECT * FROM workspaces WHERE user_id = $1 ORDER BY id', [req.user.id]);
+    'SELECT * FROM workspaces WHERE user_id = $1 ORDER BY position, id', [req.user.id]);
   res.json(rows);
 });
 
@@ -376,10 +376,40 @@ app.get('/api/workspaces/:id', async (req, res) => {
 app.post('/api/workspaces', async (req, res) => {
   const { title } = req.body;
   const { rows } = await pool.query(
-    'INSERT INTO workspaces (title, user_id) VALUES ($1, $2) RETURNING *',
+    `INSERT INTO workspaces (title, user_id, position)
+     SELECT $1, $2, COALESCE(MAX(position) + 1, 0) FROM workspaces WHERE user_id = $2
+     RETURNING *`,
     [title, req.user.id]
   );
   res.status(201).json(rows[0]);
+});
+
+app.patch('/api/workspaces/reorder', async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || !ids.length) {
+    return res.status(400).json({ error: 'ids must be a non-empty array' });
+  }
+  const { rows: owned } = await pool.query(
+    'SELECT count(*)::int AS c FROM workspaces WHERE id = ANY($1::int[]) AND user_id = $2',
+    [ids, req.user.id]
+  );
+  if (owned[0].c !== ids.length) {
+    return res.status(404).json({ error: 'Workspace not found' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (let i = 0; i < ids.length; i++) {
+      await client.query('UPDATE workspaces SET position = $1 WHERE id = $2', [i, ids[i]]);
+    }
+    await client.query('COMMIT');
+    res.sendStatus(204);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 });
 
 app.patch('/api/workspaces/:id', async (req, res) => {
@@ -412,7 +442,7 @@ app.get('/api/boards', async (req, res) => {
     return res.status(404).json({ error: 'Workspace not found' });
   }
   const { rows } = await pool.query(
-    'SELECT * FROM boards WHERE workspace_id = $1 AND archived = $2 ORDER BY starred DESC, id',
+    'SELECT * FROM boards WHERE workspace_id = $1 AND archived = $2 ORDER BY starred DESC, position, id',
     [workspaceId, archived]
   );
   res.json(rows);
@@ -440,7 +470,9 @@ app.post('/api/boards', async (req, res) => {
   try {
     await client.query('BEGIN');
     const { rows } = await client.query(
-      'INSERT INTO boards (title, workspace_id) VALUES ($1, $2) RETURNING *',
+      `INSERT INTO boards (title, workspace_id, position)
+       SELECT $1, $2, COALESCE(MAX(position) + 1, 0) FROM boards WHERE workspace_id = $2
+       RETURNING *`,
       [title, workspace_id]
     );
     const board = rows[0];
@@ -452,6 +484,36 @@ app.post('/api/boards', async (req, res) => {
     }
     await client.query('COMMIT');
     res.status(201).json(board);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+});
+
+app.patch('/api/boards/reorder', async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || !ids.length) {
+    return res.status(400).json({ error: 'ids must be a non-empty array' });
+  }
+  const { rows: owned } = await pool.query(
+    `SELECT count(*)::int AS c FROM boards b
+     JOIN workspaces w ON b.workspace_id = w.id
+     WHERE b.id = ANY($1::int[]) AND w.user_id = $2`,
+    [ids, req.user.id]
+  );
+  if (owned[0].c !== ids.length) {
+    return res.status(404).json({ error: 'Board not found' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (let i = 0; i < ids.length; i++) {
+      await client.query('UPDATE boards SET position = $1 WHERE id = $2', [i, ids[i]]);
+    }
+    await client.query('COMMIT');
+    res.sendStatus(204);
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

@@ -299,6 +299,30 @@ button.logout:hover {
   @apply mb-2 rounded-[10px] border border-dashed border-[#c4c4c4] bg-[#f4f4f4];
 }
 
+.drop-bar-v,
+.drop-bar-h {
+  @apply absolute bg-gray-400 rounded-full z-20 pointer-events-none;
+}
+
+.drop-bar-v {
+  top: 4px;
+  bottom: 4px;
+  left: -7px;
+  width: 3px;
+}
+
+.drop-bar-v.drop-bar-end {
+  left: auto;
+  right: -7px;
+}
+
+.drop-bar-h {
+  left: 4px;
+  right: 4px;
+  top: -5px;
+  height: 3px;
+}
+
 /* ---------- Card actions & menus ---------- */
 
 .card-action {
