@@ -52,6 +52,8 @@
   let editCommentText = '';
   let improving = false;
   let improveError = '';
+  let improveNotice = '';
+  let improveNoticeTimer = null;
 
   // Pomodoro timer
   let pomodoroMinutes = 25;
@@ -337,6 +339,7 @@
     if (improving) return;
     improving = true;
     improveError = '';
+    improveNotice = '';
     try {
       const res = await fetch(`${api}/api/ai/improve`, {
         method: 'POST',
@@ -345,8 +348,13 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+      const newDesc = data.description ? sanitizeHtml(data.description) : detailDescription;
+      const changed = (data.title && data.title !== detailTitle) || newDesc !== detailDescription;
       if (data.title) detailTitle = data.title;
-      if (data.description) detailDescription = sanitizeHtml(data.description);
+      detailDescription = newDesc;
+      improveNotice = changed ? 'Text improved — review and save' : 'Already looks good';
+      clearTimeout(improveNoticeTimer);
+      improveNoticeTimer = setTimeout(() => { improveNotice = ''; }, 3000);
     } catch (err) {
       console.error('[Card] AI improve failed', err);
       improveError = err.message || 'Improvement failed';
@@ -840,6 +848,8 @@
 
       {#if improveError}
         <div class="px-5 py-2 text-xs text-red-600 bg-red-50 border-b border-red-100 shrink-0">{improveError}</div>
+      {:else if improveNotice}
+        <div class="px-5 py-2 text-xs text-emerald-700 bg-emerald-50 border-b border-emerald-100 shrink-0">{improveNotice}</div>
       {/if}
 
       <div class="flex gap-0 border-b border-[#e6e6e6] px-5">

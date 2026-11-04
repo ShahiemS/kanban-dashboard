@@ -282,7 +282,7 @@ app.post('/api/ai/improve', aiLimiter, async (req, res) => {
           {
             role: 'system',
             content:
-              'You are a proofreading assistant for kanban tickets. Fix spelling, grammar and punctuation. ' +
+              'You are a proofreading assistant for kanban tickets. Fix spelling, grammar, capitalization and punctuation. ' +
               'Keep the original language of each text (Dutch stays Dutch, English stays English). ' +
               'Do not change the meaning, do not add content, keep it concise. ' +
               'The title must stay plain text on a single line. The description may contain simple HTML ' +

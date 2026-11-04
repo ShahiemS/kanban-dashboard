@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher, tick } from 'svelte';
-  import { DotsThree, Plus } from 'phosphor-svelte';
+  import { DotsThree, Plus, MagicWand, CircleNotch } from 'phosphor-svelte';
   import Card from './Card.svelte';
   import Modal from './Modal.svelte';
 
@@ -20,6 +20,36 @@
   let editTitle = column.title;
   let menuOpen = false;
   let titleInput = null;
+  let improving = false;
+  let improveError = '';
+  let improveNotice = '';
+  let improveNoticeTimer = null;
+
+  async function improveWithAI() {
+    if (improving || (!newTitle.trim() && !newDesc.trim())) return;
+    improving = true;
+    improveError = '';
+    improveNotice = '';
+    try {
+      const res = await fetch(`${api}/api/ai/improve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle, description: newDesc })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+      const changed = (data.title && data.title !== newTitle) || (data.description && data.description !== newDesc);
+      if (data.title) newTitle = data.title;
+      if (data.description) newDesc = data.description;
+      improveNotice = changed ? 'Improved' : 'Already looks good';
+      clearTimeout(improveNoticeTimer);
+      improveNoticeTimer = setTimeout(() => { improveNotice = ''; }, 3000);
+    } catch (err) {
+      improveError = err.message || 'Improvement failed';
+    } finally {
+      improving = false;
+    }
+  }
 
   function toggleMenu() {
     menuOpen = !menuOpen;
@@ -212,6 +242,30 @@
 
       <label class="add-card-label" for="add-card-desc">Description</label>
       <textarea id="add-card-desc" bind:value={newDesc} placeholder="Optional description" rows="3" />
+
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button
+          class="secondary"
+          style="display: inline-flex; align-items: center; gap: 6px;"
+          on:click={improveWithAI}
+          disabled={improving || (!newTitle.trim() && !newDesc.trim())}
+          title="Improve title and description with AI"
+        >
+          {#if improving}
+            <CircleNotch size={14} class="animate-spin" />
+            Improving…
+          {:else}
+            <MagicWand size={14} />
+            Improve with AI
+          {/if}
+        </button>
+        {#if improveNotice}
+          <span style="font-size: 11px; color: #059669;">{improveNotice}</span>
+        {/if}
+        {#if improveError}
+          <span style="font-size: 11px; color: #dc2626;">{improveError}</span>
+        {/if}
+      </div>
 
       <label class="add-card-checkbox">
         <input type="checkbox" bind:checked={addAnother} />
