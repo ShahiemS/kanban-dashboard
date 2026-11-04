@@ -603,6 +603,39 @@ app.patch('/api/cards/:id/move', async (req, res) => {
   res.json(rows[0]);
 });
 
+// Reorder cards — ids in desired order, positions renumbered globally
+app.patch('/api/cards/reorder', async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || !ids.length) {
+    return res.status(400).json({ error: 'ids must be a non-empty array' });
+  }
+  const { rows: owned } = await pool.query(
+    `SELECT count(*)::int AS c FROM cards
+     JOIN columns c ON cards.column_id = c.id
+     JOIN boards b ON c.board_id = b.id
+     JOIN workspaces w ON b.workspace_id = w.id
+     WHERE cards.id = ANY($1::int[]) AND w.user_id = $2`,
+    [ids, req.user.id]
+  );
+  if (owned[0].c !== ids.length) {
+    return res.status(404).json({ error: 'Card not found' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (let i = 0; i < ids.length; i++) {
+      await client.query('UPDATE cards SET position = $1 WHERE id = $2', [i, ids[i]]);
+    }
+    await client.query('COMMIT');
+    res.sendStatus(204);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+});
+
 app.patch('/api/columns/:id/archive', async (req, res) => {
   const { id } = req.params;
   if (!(await ownsColumn(req.user.id, id))) {

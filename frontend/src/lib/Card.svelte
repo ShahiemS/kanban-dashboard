@@ -1,6 +1,7 @@
 <script context="module">
   import { writable } from 'svelte/store';
   const activeMenu = writable(null);
+  export const draggingCard = writable(null);
 </script>
 
 <script>
@@ -122,6 +123,11 @@
   function onDragStart(e) {
     e.dataTransfer.setData('cardId', card.id);
     e.dataTransfer.effectAllowed = 'move';
+    draggingCard.set({ id: card.id, height: e.currentTarget.offsetHeight });
+  }
+
+  function onDragEnd() {
+    draggingCard.set(null);
   }
 
   function closeMenus() {
@@ -619,6 +625,7 @@
   class="group relative rounded-[10px] border px-4 py-2 mb-2 active:cursor-grabbing transition-colors {card.archived ? 'bg-gray-50 border-gray-200 opacity-80' : card.completed ? 'bg-emerald-50 border-emerald-100 hover:border-emerald-200 hover:bg-emerald-100' : 'bg-white border-[#e6e6e6] hover:border-[#d4d4d4] hover:bg-[#fafafa]'}"
   draggable={!editingTitle && !card.archived}
   on:dragstart={onDragStart}
+  on:dragend={onDragEnd}
   on:click={openDetail}
   on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && openDetail()}
   on:contextmenu|preventDefault={showContextMenu}

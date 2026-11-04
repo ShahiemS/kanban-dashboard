@@ -1,7 +1,8 @@
 <script>
   import { createEventDispatcher, tick } from 'svelte';
+  import { flip } from 'svelte/animate';
   import { DotsThree, Plus, MagicWand, CircleNotch } from 'phosphor-svelte';
-  import Card from './Card.svelte';
+  import Card, { draggingCard } from './Card.svelte';
   import Modal from './Modal.svelte';
 
   export let column;
@@ -24,6 +25,44 @@
   let improveError = '';
   let improveNotice = '';
   let improveNoticeTimer = null;
+  let dropIndex = null;
+  let cardsEl = null;
+
+  function computeDropIndex(y) {
+    if (!cardsEl) return cards.length;
+    const els = cardsEl.querySelectorAll('.card-wrapper');
+    for (let i = 0; i < els.length; i++) {
+      const r = els[i].lastElementChild.getBoundingClientRect();
+      if (y < r.top + r.height / 2) return i;
+    }
+    return els.length;
+  }
+
+  function onCardsDragOver(e) {
+    if (!e.dataTransfer.types.includes('cardid')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    dropIndex = computeDropIndex(e.clientY);
+    dragOver = true;
+  }
+
+  function onCardsDragLeave(e) {
+    if (cardsEl && !cardsEl.contains(e.relatedTarget)) {
+      dropIndex = null;
+    }
+  }
+
+  function onCardsDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const cardId = parseInt(e.dataTransfer.getData('cardId'), 10);
+    const index = dropIndex ?? cards.length;
+    dropIndex = null;
+    dragOver = false;
+    if (!cardId) return;
+    dispatch('cardDropped', { cardId, columnId: column.id, index });
+  }
 
   async function improveWithAI() {
     if (improving || (!newTitle.trim() && !newDesc.trim())) return;
@@ -117,16 +156,11 @@
       return;
     }
     const cardId = e.dataTransfer.getData('cardId');
-    const targetCardId = e.dataTransfer.getData('targetCardId');
-    if (!cardId || targetCardId) return;
-    const res = await fetch(`${api}/api/cards/${cardId}/move`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ column_id: column.id, position: cards.length })
-    });
-    const updated = await res.json();
-    dispatch('cardMoved', updated);
+    if (!cardId) return;
+    dispatch('cardDropped', { cardId: parseInt(cardId, 10), columnId: column.id, index: cards.length });
   }
+
+  $: if (!$draggingCard) dropIndex = null;
 
   function onColumnDragStart(e) {
     e.dataTransfer.setData('columnId', column.id);
@@ -222,10 +256,24 @@
     {/if}
   </div>
 
-  <div class="cards">
-    {#each cards as card (card.id)}
-      <Card {card} {api} on:cardMoved />
+  <div
+    class="cards"
+    bind:this={cardsEl}
+    on:dragover={onCardsDragOver}
+    on:dragleave={onCardsDragLeave}
+    on:drop={onCardsDrop}
+  >
+    {#each cards as card, i (card.id)}
+      <div class="card-wrapper" class:card-dragging={$draggingCard?.id === card.id} animate:flip={{ duration: 200 }}>
+        {#if dropIndex === i}
+          <div class="drop-indicator" style:height="{$draggingCard?.height || 40}px"></div>
+        {/if}
+        <Card {card} {api} on:cardMoved />
+      </div>
     {/each}
+    {#if dropIndex !== null && dropIndex >= cards.length}
+      <div class="drop-indicator" style:height="{$draggingCard?.height || 40}px"></div>
+    {/if}
   </div>
 
   <button class="add-card-trigger" on:click={openAddCard}>

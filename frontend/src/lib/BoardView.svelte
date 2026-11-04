@@ -135,6 +135,43 @@
     }
   }
 
+  async function handleCardDropped(event) {
+    const { cardId, columnId, index } = event.detail;
+    const card = cards.find(c => c.id === cardId);
+    if (!card) return;
+
+    const targetCards = cards.filter(c => c.column_id === columnId && c.id !== cardId);
+    let insertAt = Math.min(index, targetCards.length);
+    if (card.column_id === columnId) {
+      const origIdx = cards.filter(c => c.column_id === columnId).findIndex(c => c.id === cardId);
+      if (origIdx > -1 && origIdx < index) insertAt = Math.max(0, index - 1);
+    }
+    targetCards.splice(insertAt, 0, { ...card, column_id: columnId });
+
+    const next = [];
+    for (const col of columns) {
+      next.push(...(col.id === columnId ? targetCards : cards.filter(c => c.column_id === col.id && c.id !== cardId)));
+    }
+    const previous = cards;
+    cards = next;
+
+    try {
+      await fetch(`${api}/api/cards/${cardId}/move`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ column_id: columnId, position: insertAt })
+      });
+      await fetch(`${api}/api/cards/reorder`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: next.map(c => c.id) })
+      });
+    } catch (err) {
+      console.error('[BoardView] card drop failed', err);
+      cards = previous;
+    }
+  }
+
   function handleArchiveAll(event) {
     const { column_id } = event.detail;
     if (showArchived) {
@@ -241,7 +278,7 @@
 
         <div class="board">
           {#each columns as column (column.id)}
-            <Column {column} cards={cards.filter(c => c.column_id === column.id && (!cardSearchQuery || c.title.toLowerCase().includes(cardSearchQuery.toLowerCase())))} on:cardMoved={handleCardMoved} on:archiveAll={handleArchiveAll} on:archiveCompleted={handleArchiveCompleted} on:columnRenamed={handleColumnRenamed} on:columnMoved={handleColumnMoved} on:columnDeleted={handleColumnDeleted} api={api} />
+            <Column {column} cards={cards.filter(c => c.column_id === column.id && (!cardSearchQuery || c.title.toLowerCase().includes(cardSearchQuery.toLowerCase())))} on:cardMoved={handleCardMoved} on:cardDropped={handleCardDropped} on:archiveAll={handleArchiveAll} on:archiveCompleted={handleArchiveCompleted} on:columnRenamed={handleColumnRenamed} on:columnMoved={handleColumnMoved} on:columnDeleted={handleColumnDeleted} api={api} />
           {/each}
 
           {#if showAddColumn}

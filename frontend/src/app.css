@@ -291,6 +291,14 @@ button.logout:hover {
   scrollbar-width: thin;
 }
 
+.card-wrapper.card-dragging {
+  @apply opacity-40;
+}
+
+.drop-indicator {
+  @apply mb-2 rounded-[10px] border border-dashed border-[#c4c4c4] bg-[#f4f4f4];
+}
+
 /* ---------- Card actions & menus ---------- */
 
 .card-action {
