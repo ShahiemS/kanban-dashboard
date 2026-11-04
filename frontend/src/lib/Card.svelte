@@ -7,7 +7,7 @@
   import { createEventDispatcher, tick } from 'svelte';
   import { get } from 'svelte/store';
   import { fly } from 'svelte/transition';
-  import { DotsThree, Link, X, Check, Article, TextB, TextH, TextItalic, TextUnderline, ListBullets, ListNumbers, PencilSimple, Trash, Timer, Play, Pause, ArrowCounterClockwise } from 'phosphor-svelte';
+  import { DotsThree, Link, X, Check, Article, TextB, TextH, TextItalic, TextUnderline, ListBullets, ListNumbers, PencilSimple, Trash, Timer, Play, Pause, ArrowCounterClockwise, MagicWand, CircleNotch } from 'phosphor-svelte';
   import Modal from './Modal.svelte';
 
   export let card;
@@ -50,6 +50,8 @@
   let newComment = '';
   let editingCommentIndex = -1;
   let editCommentText = '';
+  let improving = false;
+  let improveError = '';
 
   // Pomodoro timer
   let pomodoroMinutes = 25;
@@ -328,6 +330,28 @@
   function requestNotificationPermission() {
     if ('Notification' in window && Notification.permission !== 'denied') {
       Notification.requestPermission();
+    }
+  }
+
+  async function improveWithAI() {
+    if (improving) return;
+    improving = true;
+    improveError = '';
+    try {
+      const res = await fetch(`${api}/api/ai/improve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: detailTitle, description: detailDescription })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+      if (data.title) detailTitle = data.title;
+      if (data.description) detailDescription = sanitizeHtml(data.description);
+    } catch (err) {
+      console.error('[Card] AI improve failed', err);
+      improveError = err.message || 'Improvement failed';
+    } finally {
+      improving = false;
     }
   }
 
@@ -790,14 +814,33 @@
             <PencilSimple size={14} class="shrink-0 text-gray-400 opacity-0 group-hover:opacity-100 transition" />
           </button>
         {/if}
-        <button
-          class="flex items-center justify-center w-8 h-8 rounded-md bg-transparent border-none text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-          on:click={closeDetail}
-          aria-label="Close"
-        >
-          <X size={18} />
-        </button>
+        <div class="flex items-center gap-1 shrink-0">
+          <button
+            class="flex items-center justify-center w-8 h-8 rounded-md bg-transparent border-none transition {improving ? 'text-violet-400 cursor-wait' : 'text-gray-500 hover:bg-violet-50 hover:text-violet-600'}"
+            on:click={improveWithAI}
+            disabled={improving}
+            aria-label="Improve text with AI"
+            title="Improve text with AI"
+          >
+            {#if improving}
+              <CircleNotch size={18} class="animate-spin" />
+            {:else}
+              <MagicWand size={18} />
+            {/if}
+          </button>
+          <button
+            class="flex items-center justify-center w-8 h-8 rounded-md bg-transparent border-none text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+            on:click={closeDetail}
+            aria-label="Close"
+          >
+            <X size={18} />
+          </button>
+        </div>
       </div>
+
+      {#if improveError}
+        <div class="px-5 py-2 text-xs text-red-600 bg-red-50 border-b border-red-100 shrink-0">{improveError}</div>
+      {/if}
 
       <div class="flex gap-0 border-b border-[#e6e6e6] px-5">
         <button

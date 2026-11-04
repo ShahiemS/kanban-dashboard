@@ -34,6 +34,12 @@
   let newWorkspaceInput = null;
   let collapsed = false;
   let workspaceBoards = {};
+  let aiModel = '';
+  let aiKey = '';
+  let aiKeySet = false;
+  let aiKeyPreview = '';
+  let aiSettingsMsg = '';
+  let aiSaving = false;
 
   const SIDEBAR_COLLAPSED_KEY = 'kanban.sidebar.collapsed';
 
@@ -202,6 +208,44 @@
 
   function toggleUserMenu() {
     showUserMenu = !showUserMenu;
+    if (showUserMenu) loadSettings();
+  }
+
+  async function loadSettings() {
+    try {
+      const res = await fetch(`${api}/api/settings`);
+      if (!res.ok) return;
+      const s = await res.json();
+      aiModel = s.ai_model || '';
+      aiKeySet = s.has_openai_key;
+      aiKeyPreview = s.openai_key_preview || '';
+      aiKey = '';
+      aiSettingsMsg = '';
+    } catch (err) {
+      console.error('[WorkspaceSidebar] load settings failed', err);
+    }
+  }
+
+  async function saveAiSettings() {
+    aiSaving = true;
+    aiSettingsMsg = '';
+    try {
+      const res = await fetch(`${api}/api/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ openai_api_key: aiKey, ai_model: aiModel })
+      });
+      const s = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(s.error || `Request failed (${res.status})`);
+      aiKeySet = s.has_openai_key;
+      aiKeyPreview = s.openai_key_preview || '';
+      aiKey = '';
+      aiSettingsMsg = 'Saved';
+    } catch (err) {
+      aiSettingsMsg = err.message || 'Save failed';
+    } finally {
+      aiSaving = false;
+    }
   }
 </script>
 
@@ -450,6 +494,35 @@
             </button>
           {/each}
         </div>
+        <div class="border-t border-[#e6e6e6] my-3"></div>
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">AI text improvement</p>
+        <label class="block text-xs text-gray-500 mb-1" for="ai-key">OpenAI API key</label>
+        <input
+          id="ai-key"
+          type="password"
+          class="w-full mb-2 px-2 py-1.5 text-sm border border-[#e6e6e6] rounded-lg bg-white text-gray-900 outline-none focus:border-gray-900"
+          bind:value={aiKey}
+          placeholder={aiKeySet ? `Saved key ${aiKeyPreview}` : 'sk-...'}
+          autocomplete="off"
+        />
+        <label class="block text-xs text-gray-500 mb-1" for="ai-model">Model</label>
+        <input
+          id="ai-model"
+          class="w-full mb-2 px-2 py-1.5 text-sm border border-[#e6e6e6] rounded-lg bg-white text-gray-900 outline-none focus:border-gray-900"
+          bind:value={aiModel}
+          placeholder="gpt-4o-mini (default)"
+        />
+        <div class="flex items-center gap-2 mb-2">
+          <button
+            class="px-2 py-1 text-xs rounded-md bg-gray-900 text-white font-medium hover:bg-gray-800 disabled:opacity-50"
+            on:click|stopPropagation={saveAiSettings}
+            disabled={aiSaving}
+          >{aiSaving ? 'Saving…' : 'Save AI settings'}</button>
+          {#if aiSettingsMsg}
+            <span class="text-xs {aiSettingsMsg === 'Saved' ? 'text-emerald-600' : 'text-red-600'}">{aiSettingsMsg}</span>
+          {/if}
+        </div>
+        <p class="text-[11px] text-gray-400 mb-2">Leave empty to use the server default. Used by the magic-wand button on cards.</p>
         <button class="flex items-center gap-2 w-full rounded-md border-transparent bg-transparent px-2 py-1.5 text-left text-[13px] font-normal text-gray-900 hover:bg-gray-100" on:click|stopPropagation={onLogout}>
           <SignOut size={14} weight="bold" />
           Log out

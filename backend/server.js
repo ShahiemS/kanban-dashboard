@@ -42,6 +42,7 @@ function rateLimit({ windowMs, max }) {
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
 const resetLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5 });
+const aiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30 });
 
 // ---------- Auth helpers ----------
 
@@ -79,7 +80,7 @@ function bearerToken(req) {
 async function getSessionUser(token) {
   if (!token) return null;
   const { rows } = await pool.query(
-    `SELECT users.id, users.email, users.name FROM sessions
+    `SELECT users.id, users.email, users.name, users.settings FROM sessions
      JOIN users ON users.id = sessions.user_id
      WHERE sessions.token = $1 AND sessions.expires_at > now()`,
     [token]
@@ -207,6 +208,116 @@ app.use('/api', async (req, res, next) => {
 });
 
 app.get('/api/auth/me', (req, res) => res.json(req.user));
+
+// ---------- AI text improvement ----------
+
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+const AI_MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
+
+// ---------- Per-user settings (stored in users.settings JSONB) ----------
+
+app.get('/api/settings', (req, res) => {
+  const s = req.user.settings || {};
+  const key = s.openai_api_key || '';
+  res.json({
+    ai_model: s.ai_model || '',
+    has_openai_key: !!key,
+    openai_key_preview: key ? `…${key.slice(-4)}` : ''
+  });
+});
+
+app.put('/api/settings', async (req, res) => {
+  const current = req.user.settings || {};
+  const next = { ...current };
+  if ('openai_api_key' in (req.body || {})) {
+    const k = String(req.body.openai_api_key || '').trim();
+    if (k) next.openai_api_key = k;
+    else delete next.openai_api_key;
+  }
+  if ('ai_model' in (req.body || {})) {
+    const m = String(req.body.ai_model || '').trim();
+    if (m) next.ai_model = m;
+    else delete next.ai_model;
+  }
+  const { rows } = await pool.query(
+    'UPDATE users SET settings = $1 WHERE id = $2 RETURNING settings',
+    [JSON.stringify(next), req.user.id]
+  );
+  const s = rows[0].settings || {};
+  const key = s.openai_api_key || '';
+  res.json({
+    ai_model: s.ai_model || '',
+    has_openai_key: !!key,
+    openai_key_preview: key ? `…${key.slice(-4)}` : ''
+  });
+});
+
+// Improves spelling/grammar of a card's title and description while keeping
+// the original language (Dutch or English) and meaning. The description is
+// rich-text HTML; the model must return the same tag subset.
+app.post('/api/ai/improve', aiLimiter, async (req, res) => {
+  const userSettings = req.user.settings || {};
+  const apiKey = userSettings.openai_api_key || OPENAI_API_KEY;
+  const model = userSettings.ai_model || AI_MODEL;
+  if (!apiKey) {
+    return res.status(503).json({ error: 'No OpenAI API key configured. Add one in your profile settings.' });
+  }
+  const title = String(req.body?.title || '').slice(0, 500);
+  const description = String(req.body?.description || '').slice(0, 20000);
+  if (!title.trim() && !description.trim()) {
+    return res.status(400).json({ error: 'Nothing to improve' });
+  }
+  try {
+    const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.2,
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are a proofreading assistant for kanban tickets. Fix spelling, grammar and punctuation. ' +
+              'Keep the original language of each text (Dutch stays Dutch, English stays English). ' +
+              'Do not change the meaning, do not add content, keep it concise. ' +
+              'The title must stay plain text on a single line. The description may contain simple HTML ' +
+              '(b, strong, i, em, u, h2, ul, ol, li, br, p, div); preserve that structure and return valid HTML. ' +
+              'Respond with JSON only: {"title": string, "description": string}.'
+          },
+          {
+            role: 'user',
+            content: JSON.stringify({ title, description })
+          }
+        ]
+      })
+    });
+    if (!aiRes.ok) {
+      const body = await aiRes.text();
+      console.error('[ai] OpenAI error', aiRes.status, body.slice(0, 500));
+      return res.status(502).json({ error: 'AI request failed' });
+    }
+    const data = await aiRes.json();
+    const content = data.choices?.[0]?.message?.content || '{}';
+    let improved;
+    try {
+      improved = JSON.parse(content);
+    } catch {
+      return res.status(502).json({ error: 'AI returned an unexpected response' });
+    }
+    res.json({
+      title: typeof improved.title === 'string' && improved.title.trim() ? improved.title : title,
+      description: typeof improved.description === 'string' ? improved.description : description
+    });
+  } catch (err) {
+    console.error('[ai] improve failed', err);
+    res.status(502).json({ error: 'AI request failed' });
+  }
+});
 
 app.post('/api/auth/logout', async (req, res) => {
   const token = bearerToken(req);
