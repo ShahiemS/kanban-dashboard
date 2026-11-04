@@ -27,5 +27,5 @@ jobs:
               git clone ${{ github.server_url }}/${{ github.repository }}.git /opt/kanban
               cd /opt/kanban
             fi
-            docker compose down
-            docker compose up --build -d
+            docker compose build
+            docker compose up -d

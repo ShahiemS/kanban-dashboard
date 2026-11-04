@@ -5,7 +5,7 @@ echo "Deploying kanban board..."
 
 cd "$(dirname "$0")"
 
-docker compose down
-docker compose up --build -d
+docker compose build
+docker compose up -d
 
 echo "Deployment complete."

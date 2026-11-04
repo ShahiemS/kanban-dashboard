@@ -9,3 +9,11 @@ werkethiek.nl {
 www.werkethiek.nl {
 	redir https://werkethiek.nl{uri} permanent
 }
+
+tam.originaliteitsprijs.nl {
+	reverse_proxy game-frontend:4321
+}
+
+api-tam.originaliteitsprijs.nl {
+	reverse_proxy game-server:3000
+}
