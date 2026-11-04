@@ -28,4 +28,8 @@ jobs:
               cd /opt/kanban
             fi
             docker compose build
-            docker compose up -d
+            # Reload Caddy config live instead of recreating it, so TLS for
+            # other domains served by this proxy (tam.*) keeps working.
+            docker compose up -d --no-recreate caddy || docker compose up -d caddy
+            docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile || true
+            docker compose up -d db backend frontend
