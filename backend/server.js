@@ -459,7 +459,10 @@ app.get('/api/boards/:id', async (req, res) => {
 });
 
 app.post('/api/boards', async (req, res) => {
-  const { title, workspace_id, columns = [] } = req.body;
+  const { title, workspace_id, columns = [], template = 'blank' } = req.body;
+  if (!['blank', 'kanban', 'sport'].includes(template)) {
+    return res.status(400).json({ error: 'Invalid board template' });
+  }
   if (!workspace_id) {
     return res.status(400).json({ error: 'workspace_id is required' });
   }
@@ -470,10 +473,10 @@ app.post('/api/boards', async (req, res) => {
   try {
     await client.query('BEGIN');
     const { rows } = await client.query(
-      `INSERT INTO boards (title, workspace_id, position)
-       SELECT $1, $2, COALESCE(MAX(position) + 1, 0) FROM boards WHERE workspace_id = $2
+      `INSERT INTO boards (title, workspace_id, position, template)
+       SELECT $1, $2, COALESCE(MAX(position) + 1, 0), $3 FROM boards WHERE workspace_id = $2
        RETURNING *`,
-      [title, workspace_id]
+      [title, workspace_id, template]
     );
     const board = rows[0];
     for (let i = 0; i < columns.length; i++) {

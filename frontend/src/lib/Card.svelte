@@ -13,6 +13,11 @@
 
   export let card;
   export let api;
+  export let isSportBoard = false;
+
+  let workoutSets = [];
+  let savedWorkoutSets = '';
+  let workoutError = '';
 
   const dispatch = createEventDispatcher();
 
@@ -103,7 +108,7 @@
   $: tags = Array.isArray(meta.tags) && meta.tags.length
     ? meta.tags
     : (meta.tag ? [{ label: meta.tag, color: meta.tag_color || '#0079bf' }] : []);
-  $: dirty = detailOpen && (detailTitle !== card.title || detailDescription !== (card.description || ''));
+  $: dirty = detailOpen && (detailTitle !== card.title || detailDescription !== (card.description || '') || (isSportBoard && JSON.stringify(workoutSets) !== savedWorkoutSets));
 
   let savedDocTitle = '';
   $: if (typeof document !== 'undefined') {
@@ -468,6 +473,9 @@
     detailOpen = true;
     detailTitle = card.title;
     detailDescription = sanitizeHtml(card.description || '');
+    workoutSets = Array.isArray(meta.workout_sets) ? meta.workout_sets.map(set => ({ kg: set.kg ?? '', reps: set.reps ?? '' })) : [];
+    savedWorkoutSets = JSON.stringify(workoutSets);
+    workoutError = '';
     const existing = Array.isArray(meta.checklists) ? meta.checklists : (Array.isArray(meta.subtasks) ? [{ title: 'Checklist', items: meta.subtasks }] : []);
     checklists = existing.map(list => ({ ...list, items: Array.isArray(list.items) ? list.items : [] }));
     detailTags = Array.isArray(meta.tags) ? meta.tags : (meta.tag ? [{ label: meta.tag, color: meta.tag_color || '#0079bf' }] : []);
@@ -479,8 +487,21 @@
   }
 
   async function saveDetail() {
+    workoutError = '';
+    workoutSets = workoutSets.map(set => ({ kg: set.kg ?? '', reps: set.reps ?? '' }));
+    if (isSportBoard && workoutSets.some(set =>
+      (set.kg !== '' && (set.kg == null || !Number.isFinite(Number(set.kg)) || Number(set.kg) < 0)) ||
+      (set.reps !== '' && (set.reps == null || !Number.isInteger(Number(set.reps)) || Number(set.reps) < 0))
+    )) {
+      workoutError = 'Enter a valid weight and a whole number of reps (zero or more).';
+      return;
+    }
     const nextMeta = { ...meta, checklists: checklists.map(list => ({ title: list.title, items: list.items.map(i => ({ text: i.text, done: i.done })) })), tags: detailTags };
     try {
+      if (isSportBoard) nextMeta.workout_sets = workoutSets.map(set => ({
+        kg: set.kg === '' ? '' : Number(set.kg),
+        reps: set.reps === '' ? '' : Number(set.reps)
+      }));
       await saveCard({ title: detailTitle, description: sanitizeHtml(detailDescription), meta: nextMeta });
       detailOpen = false;
     } catch (err) {
@@ -925,6 +946,33 @@
             bind:innerHTML={detailDescription}
           />
         </div>
+
+        {#if isSportBoard}
+          <section class="space-y-3" aria-label="Workout sets">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Workout</h4>
+              <button class="secondary" on:click={() => workoutSets = [...workoutSets, { ...(workoutSets.at(-1) ?? { kg: '', reps: '' }) }]}>Add set</button>
+            </div>
+            {#if workoutSets.length}
+              <table class="w-full text-sm text-left">
+                <thead><tr><th scope="col" class="py-2">Set</th><th scope="col">KG</th><th scope="col">Reps</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+                <tbody>
+                  {#each workoutSets as set, index}
+                    <tr class="border-t border-gray-100">
+                      <th scope="row" class="py-2 pr-3">{index + 1}</th>
+                      <td class="py-2 pr-2"><input class="w-full min-w-0 px-2 py-1 border border-gray-200 rounded-md" type="number" min="0" step="any" placeholder="0" aria-label={`Set ${index + 1} weight in KG`} bind:value={set.kg} /></td>
+                      <td class="py-2 pr-2"><input class="w-full min-w-0 px-2 py-1 border border-gray-200 rounded-md" type="number" min="0" step="1" placeholder="0" aria-label={`Set ${index + 1} reps`} bind:value={set.reps} /></td>
+                      <td><button class="secondary" aria-label={`Remove set ${index + 1}`} on:click={() => workoutSets = workoutSets.filter((_, i) => i !== index)}><X size={14} /></button></td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            {:else}
+              <p class="text-sm text-gray-500">Add a set to track weight and reps for this exercise.</p>
+            {/if}
+            {#if workoutError}<p class="text-sm text-red-600" role="alert">{workoutError}</p>{/if}
+          </section>
+        {/if}
 
         <div class="space-y-4">
           <div class="flex items-center justify-between">

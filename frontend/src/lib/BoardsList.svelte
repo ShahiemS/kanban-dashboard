@@ -91,7 +91,7 @@
       const res = await fetch(`${api}/api/boards`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newBoardTitle, workspace_id: workspaceId, columns: templates[selectedTemplate] })
+        body: JSON.stringify({ title: newBoardTitle, workspace_id: workspaceId, template: selectedTemplate, columns: templates[selectedTemplate] })
       });
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const board = await res.json();

@@ -14,6 +14,7 @@
   let board = null;
   let columns = [];
   let cards = [];
+  $: isSportBoard = board?.template === 'sport' || (!board?.template && columns.length === 5 && ['Warm-up', 'Skill drills', 'Tactical', 'Conditioning', 'Cool-down'].every(title => columns.some(col => col.title === title)));
   let newColumnTitle = '';
   let loading = true;
   let error = '';
@@ -278,7 +279,7 @@
 
         <div class="board">
           {#each columns as column (column.id)}
-            <Column {column} cards={cards.filter(c => c.column_id === column.id && (!cardSearchQuery || c.title.toLowerCase().includes(cardSearchQuery.toLowerCase())))} on:cardMoved={handleCardMoved} on:cardDropped={handleCardDropped} on:archiveAll={handleArchiveAll} on:archiveCompleted={handleArchiveCompleted} on:columnRenamed={handleColumnRenamed} on:columnMoved={handleColumnMoved} on:columnDeleted={handleColumnDeleted} api={api} />
+            <Column {column} {isSportBoard} cards={cards.filter(c => c.column_id === column.id && (!cardSearchQuery || c.title.toLowerCase().includes(cardSearchQuery.toLowerCase())))} on:cardMoved={handleCardMoved} on:cardDropped={handleCardDropped} on:archiveAll={handleArchiveAll} on:archiveCompleted={handleArchiveCompleted} on:columnRenamed={handleColumnRenamed} on:columnMoved={handleColumnMoved} on:columnDeleted={handleColumnDeleted} api={api} />
           {/each}
 
           {#if showAddColumn}

@@ -8,6 +8,7 @@
   export let column;
   export let cards;
   export let api;
+  export let isSportBoard = false;
 
   const dispatch = createEventDispatcher();
 
@@ -268,7 +269,7 @@
         {#if dropIndex === i}
           <div class="drop-indicator" style:height="{$draggingCard?.height || 40}px"></div>
         {/if}
-        <Card {card} {api} on:cardMoved />
+        <Card {card} {api} {isSportBoard} on:cardMoved />
       </div>
     {/each}
     {#if dropIndex !== null && dropIndex >= cards.length}
